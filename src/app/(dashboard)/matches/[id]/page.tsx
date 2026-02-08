@@ -2,6 +2,8 @@ import { getMatchById } from '@/actions/matches';
 import { notFound } from 'next/navigation';
 import { formatUserDisplayName } from '@/lib/utils';
 import Link from 'next/link';
+import RequestCorrectionForm from '@/components/RequestCorrectionForm';
+import { getCurrentUser } from '@/actions/user';
 
 interface MatchDetailPageProps {
   params: {
@@ -11,11 +13,15 @@ interface MatchDetailPageProps {
 
 export default async function MatchDetailPage({ params }: MatchDetailPageProps) {
   const match = await getMatchById(params.id);
-
+  const user = await getCurrentUser();
   if (!match) {
     notFound();
   }
-
+  const isParticipant = 
+  match.player1Id === user.id ||
+  match.player2Id === user.id ||
+  match.player3Id === user.id ||
+  match.player4Id === user.id;
   const games = match.games as Array<{ team1: number; team2: number }>;
   const team1Games = games.filter(g => g.team1 > g.team2).length;
   const team2Games = games.filter(g => g.team2 > g.team1).length;
@@ -180,6 +186,19 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {match.eventId && isParticipant && (
+        <div className="card mt-4">
+          <h3 className="font-bold mb-3">Score Correction</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Notice an error in the score? Request a correction from the event creator.
+          </p>
+          <RequestCorrectionForm
+            matchId={match.id}
+            eventId={match.eventId}
+            onSuccess={() => window.location.reload()}
+          />
         </div>
       )}
 

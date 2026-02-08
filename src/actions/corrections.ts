@@ -5,6 +5,82 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
 /**
+ * Request a score correction for a match (participants only)
+ */
+export async function requestScoreCorrection(
+  matchId: string,
+  eventId: string,
+  reason: string
+) {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    throw new Error('Not authenticated');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  try {
+    // Verify match exists and is part of event
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match || match.eventId !== eventId) {
+      return { success: false, error: 'Invalid match or event' };
+    }
+
+    // Verify user is a participant in the match
+    const isParticipant = 
+      match.player1Id === user.id ||
+      match.player2Id === user.id ||
+      match.player3Id === user.id ||
+      match.player4Id === user.id;
+
+    if (!isParticipant) {
+      return { success: false, error: 'Only match participants can request corrections' };
+    }
+
+    // Check if user already has a pending request for this match
+    const existingRequest = await prisma.scoreCorrectionRequest.findFirst({
+      where: {
+        matchId,
+        requesterId: user.id,
+        status: 'pending',
+      },
+    });
+
+    if (existingRequest) {
+      return { success: false, error: 'You already have a pending correction request for this match' };
+    }
+
+    // Create correction request
+    await prisma.scoreCorrectionRequest.create({
+      data: {
+        matchId,
+        eventId,
+        requesterId: user.id,
+        reason,
+        status: 'pending',
+      },
+    });
+
+    revalidatePath(`/event/${eventId}`);
+    revalidatePath(`/matches/${matchId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error requesting score correction:', error);
+    return { success: false, error: 'Failed to submit correction request' };
+  }
+}
+
+/**
  * Get all score correction requests for an event (creator only)
  */
 export async function getEventCorrectionRequests(eventId: string) {

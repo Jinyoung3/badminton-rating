@@ -11,7 +11,7 @@ export default async function ProfilePage() {
     redirect('/sign-in');
   }
 
-  const stats = await getMatchStatistics(user.id);
+  const stats = await getMatchStatistics();
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -146,16 +146,25 @@ export default async function ProfilePage() {
             <h3 className="font-semibold mb-3">Match Breakdown</h3>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{stats.byType.event}</div>
+                <div className="text-2xl font-bold text-blue-600">{stats.byType.event.total}</div>
                 <div className="text-xs text-gray-600">Event Matches</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {stats.byType.event.wins}W - {stats.byType.event.losses}L
+                </div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-purple-600">{stats.byType.challenge}</div>
+                <div className="text-2xl font-bold text-purple-600">{stats.byType.challenge.total}</div>
                 <div className="text-xs text-gray-600">Challenge Matches</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {stats.byType.challenge.wins}W - {stats.byType.challenge.losses}L
+                </div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-600">{stats.byType.practice}</div>
+                <div className="text-2xl font-bold text-gray-600">{stats.byType.practice.total}</div>
                 <div className="text-xs text-gray-600">Practice Matches</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {stats.byType.practice.wins}W - {stats.byType.practice.losses}L
+                </div>
               </div>
             </div>
           </div>

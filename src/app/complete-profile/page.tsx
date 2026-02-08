@@ -40,3 +40,23 @@ export default async function CompleteProfilePage() {
     </div>
   );
 }
+
+// import { redirect } from 'next/navigation';
+// import { getCurrentUser } from '@/actions/user';
+// import ProfileCompletionClient from '@/components/ProfileCompletionClient';
+
+// export default async function CompleteProfilePage() {
+//   const user = await getCurrentUser();
+
+//   // Redirect if already completed
+//   if (user?.profileCompleted) {
+//     redirect('/dashboard');
+//   }
+
+//   // Redirect to sign in if not authenticated
+//   if (!user) {
+//     redirect('/sign-in');
+//   }
+
+//   return <ProfileCompletionClient />;
+// }

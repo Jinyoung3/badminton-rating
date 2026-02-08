@@ -6,6 +6,8 @@ import LeaveEventButton from '@/components/LeaveEventButton';
 import ParticipantActions from '@/components/ParticipantActions';
 import RecordEventMatchButton from '@/components/RecordEventMatchButton';
 import Link from 'next/link';
+import CorrectionRequestCard from '@/components/CorrectionRequestCard';
+import { getEventCorrectionRequests } from '@/actions/corrections';
 
 interface EventDetailPageProps {
   params: {
@@ -30,7 +32,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   
   // Get active participants (not absent)
   const activeParticipants = event.participants.filter(p => !p.isAbsent);
-  
+  const correctionsData = isCreator 
+  ? await getEventCorrectionRequests(event.id)
+  : { success: true, requests: [] };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -189,6 +194,31 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             Matches ({event._count.matches})
           </h2>
           <p className="text-gray-600">Viewing match history coming in Phase 5...</p>
+        </div>
+      )}
+      {/* Correction Requests Section */}
+      {isCreator && correctionsData.success && correctionsData.requests && correctionsData.requests.length > 0 && (
+        <div className="card">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-2xl">🚨</span>
+            <h2 className="text-2xl font-bold">
+              Score Correction Requests ({correctionsData.requests.length})
+            </h2>
+          </div>
+          
+          <div className="space-y-3">
+            {correctionsData.requests.map((request: any) => (
+              <CorrectionRequestCard
+                key={request.id}
+                request={request}
+                isCreator={true}
+              />
+            ))}
+          </div>
+          
+          <p className="text-sm text-gray-500 mt-3">
+            Review and approve/reject correction requests from participants
+          </p>
         </div>
       )}
       
