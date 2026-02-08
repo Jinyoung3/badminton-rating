@@ -10,15 +10,20 @@ interface CreateOrganizationFormProps {
 
 export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOrganizationFormProps) {
   const [name, setName] = useState('');
+  const [type, setType] = useState<'Club' | 'College'>('Club');
+  const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleSubmit = async () => {
     if (!name.trim()) {
       setError('Organization name is required');
+      return;
+    }
+    
+    if (!location.trim()) {  // ADD VALIDATION
+      setError('Location is required');
       return;
     }
 
@@ -26,10 +31,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOr
     setError('');
 
     try {
-      const result = await createOrganization({ name, description });
+      const result = await createOrganization({ 
+        name, 
+        type,      // ADD THIS
+        location   // ADD THIS
+      });
       
       if (result.success && result.organization) {
-        // Don't reload page - just notify parent component
         onSuccess(result.organization.id);
       } else {
         setError(result.error || 'Failed to create organization');
@@ -40,12 +48,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOr
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="border-2 border-blue-400 rounded-lg p-6 bg-blue-50">
       <h3 className="text-xl font-bold mb-4">Create New Organization</h3>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">
             Organization Name *
@@ -61,15 +69,34 @@ export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOr
           />
         </div>
 
+        {/* ADD TYPE FIELD */}
         <div>
           <label className="block text-sm font-medium mb-1">
-            Description (Optional)
+            Type *
           </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of your organization..."
-            className="input w-full h-20"
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as 'Club' | 'College')}
+            className="input w-full"
+            required
+          >
+            <option value="Club">Club</option>
+            <option value="College">College</option>
+          </select>
+        </div>
+
+        {/* ADD LOCATION FIELD */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Location *
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="e.g., San Francisco, CA"
+            className="input w-full"
+            required
           />
         </div>
 
@@ -81,7 +108,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOr
 
         <div className="flex gap-3">
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={loading}
             className="btn-primary flex-1"
           >
@@ -96,7 +124,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel }: CreateOr
             Cancel
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
