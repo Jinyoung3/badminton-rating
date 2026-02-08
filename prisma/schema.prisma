@@ -1,0 +1,173 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profile
+model User {
+  id                String   @id @default(cuid())
+  clerkId           String   @unique // Clerk user ID
+  email             String   @unique
+  name              String
+  userNumber        Int      @unique @default(autoincrement()) // For display: "John Smith#20"
+  sex               String   // "Male", "Female", "Other"
+  location          String
+  preferredGameType String   // "Singles", "Doubles"
+  winCount          Int      @default(0)
+  lossCount         Int      @default(0)
+  rating            Int      @default(0) // Calculated from selfRating initially
+  
+  organizationId    String?
+  organization      Organization? @relation(fields: [organizationId], references: [id])
+  
+  profileCompleted  Boolean  @default(false) // Track if user completed profile setup
+  
+  selfRating        SelfRating?
+  createdEvents     Event[]           @relation("EventCreator")
+  eventParticipants EventParticipant[]
+  matchesAsPlayer1  Match[]           @relation("Player1")
+  matchesAsPlayer2  Match[]           @relation("Player2")
+  matchesAsPlayer3  Match[]           @relation("Player3")
+  matchesAsPlayer4  Match[]           @relation("Player4")
+  createdMatches    Match[]           @relation("MatchCreator")
+  scoreCorrectionRequests ScoreCorrectionRequest[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Self-rating questionnaire answers
+model SelfRating {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Each question scored 1-10
+  question1 Int    // How comfortable are you with basic grip and footwork?
+  question2 Int    // Can you rally consistently without mistakes?
+  question3 Int    // How well do you control shot placement?
+  question4 Int    // How strong and consistent is your overhead technique?
+  question5 Int    // How well do you move and recover on court?
+  question6 Int    // How do you handle match situations and strategy?
+  question7 Int    // How experienced are you with competitive play?
+  question8 Int    // Can you teach or analyze badminton technique?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Organizations (clubs/colleges)
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // "Club", "College"
+  location  String
+  
+  members   User[]
+  events    Event[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Events
+model Event {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  location       String
+  date           DateTime
+  eventCode      String   @unique // 4-digit code for joining
+  
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  creatorId      String
+  creator        User     @relation("EventCreator", fields: [creatorId], references: [id])
+  
+  participants   EventParticipant[]
+  matches        Match[]
+  scoreCorrectionRequests ScoreCorrectionRequest[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Event participants (join table)
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  isAbsent  Boolean  @default(false) // Event creator can mark as absent
+  joinedAt  DateTime @default(now())
+  
+  @@unique([eventId, userId])
+}
+
+// Score correction requests (for event matches)
+model ScoreCorrectionRequest {
+  id          String   @id @default(cuid())
+  matchId     String
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User     @relation(fields: [requesterId], references: [id])
+  
+  reason      String   // Why correction is needed
+  status      String   @default("pending") // "pending", "approved", "rejected"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Matches (both event and challenge)
+model Match {
+  id          String    @id @default(cuid())
+  type        String    // "event", "challenge", "practice"
+  gameType    String    // "singles", "doubles"
+  
+  eventId     String?
+  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  creatorId   String
+  creator     User      @relation("MatchCreator", fields: [creatorId], references: [id])
+  
+  // Players
+  // Singles: player1 vs player2
+  // Doubles: player1+player2 (Team 1) vs player3+player4 (Team 2)
+  player1Id   String
+  player1     User      @relation("Player1", fields: [player1Id], references: [id])
+  
+  player2Id   String
+  player2     User      @relation("Player2", fields: [player2Id], references: [id])
+  
+  player3Id   String?
+  player3     User?     @relation("Player3", fields: [player3Id], references: [id])
+  
+  player4Id   String?
+  player4     User?     @relation("Player4", fields: [player4Id], references: [id])
+  
+  // Game-by-game scores stored as JSON array
+  // Example: [{"team1": 21, "team2": 19}, {"team1": 21, "team2": 15}]
+  games       Json
+  
+  // Final winner: "team1" or "team2"
+  winner      String
+  
+  scoreCorrectionRequests ScoreCorrectionRequest[]
+  
+  // Metadata
+  matchDate   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
