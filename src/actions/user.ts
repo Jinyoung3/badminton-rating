@@ -172,3 +172,37 @@ export async function switchOrganization(organizationId: string) {
     return { success: false, error: 'Failed to switch organization' };
   }
 }
+/**
+ * Update user profile (name, location, preferred game type, sex)
+ */
+export async function updateProfile(data: {
+  name?: string;
+  location?: string;
+  preferredGameType?: string;
+  sex?: string;
+}) {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+  
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.location && { location: data.location }),
+        ...(data.preferredGameType && { preferredGameType: data.preferredGameType }),
+        ...(data.sex && { sex: data.sex }),
+      },
+    });
+    
+    revalidatePath('/');
+    revalidatePath('/profile');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return { success: false, error: 'Failed to update profile' };
+  }
+}

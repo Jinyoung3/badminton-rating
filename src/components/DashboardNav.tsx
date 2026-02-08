@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { label: 'Event', href: '/event' },
   { label: 'Leaderboard', href: '/leaderboard' },
   { label: 'Player', href: '/player' },
+  { label: 'Profile', href: '/profile' },
 ];
 
 export default function DashboardNav({ user }: DashboardNavProps) {
