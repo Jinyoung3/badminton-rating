@@ -1,7 +1,6 @@
 import { getCurrentUser } from '@/actions/user';
 import { getEvents, getMyEvents } from '@/actions/event';
 import Link from 'next/link';
-import JoinEventButton from '@/components/JoinEventButton';
 import JoinEventByIdButton from '@/components/JoinEventByIdButton';
 import { formatUserDisplayName } from '@/lib/utils';
 
@@ -29,16 +28,7 @@ export default async function EventPage() {
           + Create Event
         </Link>
       </div>
-      
-      {/* Join Event by Code */}
-      <div className="card">
-        <h2 className="text-xl font-bold mb-4">Join Event</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          Enter the 4-digit code to join an event
-        </p>
-        <JoinEventButton />
-      </div>
-      
+
       {/* My Events */}
       {myEvents.length > 0 && (
         <div>
@@ -69,15 +59,12 @@ export default async function EventPage() {
                     year: 'numeric',
                   })}
                 </p>
-                <div className="mt-2 text-xs text-gray-400">
-                  Code: <span className="font-mono font-bold">{event.eventCode}</span>
-                </div>
               </Link>
             ))}
           </div>
         </div>
       )}
-      
+
       {/* All Events */}
       <div>
         <h2 className="text-2xl font-bold mb-4">All Events</h2>
@@ -124,12 +111,7 @@ export default async function EventPage() {
                     By {formatUserDisplayName(event.creator.name, event.creator.userNumber)}
                   </p>
                   {!hasJoined && !isCreator && (
-                    <>
-                      <JoinEventByIdButton eventId={event.id} />
-                      <div className="mt-2 text-xs text-gray-400">
-                        Code: <span className="font-mono font-bold">{event.eventCode}</span>
-                      </div>
-                    </>
+                    <JoinEventByIdButton eventId={event.id} />
                   )}
                 </Link>
               );

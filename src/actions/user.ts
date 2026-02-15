@@ -109,6 +109,12 @@ export async function updateSelfRating(selfRating: SelfRatingAnswers) {
   // Calculate new rating from self-assessment
   const newRating = calculateInitialRating(selfRating);
   
+  // ADD VALIDATION
+  if (typeof newRating !== 'number' || isNaN(newRating)) {
+    console.error('Invalid rating calculated:', newRating, 'from selfRating:', selfRating);
+    return { success: false, error: 'Failed to calculate rating' };
+  }
+  
   try {
     await prisma.user.update({
       where: { id: user.id },

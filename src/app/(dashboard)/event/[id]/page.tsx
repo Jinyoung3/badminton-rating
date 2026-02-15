@@ -93,14 +93,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               <div className="font-medium">{event._count.participants} players</div>
             </div>
           </div>
-          
-          <div className="flex items-center text-gray-600">
-            <span className="text-2xl mr-2">🎫</span>
-            <div>
-              <div className="text-sm text-gray-500">Event Code</div>
-              <div className="font-mono font-bold text-lg">{event.eventCode}</div>
-            </div>
-          </div>
         </div>
         
         <div className="text-sm text-gray-500 mb-4">

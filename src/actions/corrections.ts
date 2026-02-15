@@ -1,19 +1,24 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { determineMatchWinner, getOpponentIds } from '@/lib/utils';
+
+type GameScore = { team1: number; team2: number };
 
 /**
- * Request a score correction for a match (participants only)
+ * Request a score correction for a match (participants only). Opponent can accept or reject.
  */
 export async function requestScoreCorrection(
   matchId: string,
-  eventId: string,
-  reason: string
+  reason: string,
+  proposedGames: GameScore[],
+  eventId?: string | null
 ) {
   const { userId } = await auth();
-  
+
   if (!userId) {
     throw new Error('Not authenticated');
   }
@@ -27,17 +32,18 @@ export async function requestScoreCorrection(
   }
 
   try {
-    // Verify match exists and is part of event
     const match = await prisma.match.findUnique({
       where: { id: matchId },
     });
 
-    if (!match || match.eventId !== eventId) {
+    if (!match) {
+      return { success: false, error: 'Match not found' };
+    }
+    if (match.eventId && eventId !== match.eventId) {
       return { success: false, error: 'Invalid match or event' };
     }
 
-    // Verify user is a participant in the match
-    const isParticipant = 
+    const isParticipant =
       match.player1Id === user.id ||
       match.player2Id === user.id ||
       match.player3Id === user.id ||
@@ -47,7 +53,16 @@ export async function requestScoreCorrection(
       return { success: false, error: 'Only match participants can request corrections' };
     }
 
-    // Check if user already has a pending request for this match
+    if (!Array.isArray(proposedGames) || proposedGames.length === 0) {
+      return { success: false, error: 'Proposed score must be a non-empty list of games' };
+    }
+    const valid = proposedGames.every(
+      (g) => typeof g?.team1 === 'number' && typeof g?.team2 === 'number'
+    );
+    if (!valid) {
+      return { success: false, error: 'Each game must have team1 and team2 numbers' };
+    }
+
     const existingRequest = await prisma.scoreCorrectionRequest.findFirst({
       where: {
         matchId,
@@ -60,19 +75,18 @@ export async function requestScoreCorrection(
       return { success: false, error: 'You already have a pending correction request for this match' };
     }
 
-    // Create correction request
-    await prisma.scoreCorrectionRequest.create({
-      data: {
-        matchId,
-        eventId,
-        requesterId: user.id,
-        reason,
-        status: 'pending',
-      },
-    });
+    // Raw INSERT to avoid Prisma create input requiring both match and event relation objects (event is optional in schema)
+    const id = randomUUID();
+    const eventIdValue = eventId != null && eventId !== '' ? eventId : null;
+    const proposedGamesJson = JSON.stringify(proposedGames);
+    await prisma.$executeRaw`
+      INSERT INTO "ScoreCorrectionRequest" (id, "matchId", "eventId", "requesterId", reason, "proposedGames", status, "createdAt", "updatedAt")
+      VALUES (${id}, ${matchId}, ${eventIdValue}, ${user.id}, ${reason}, ${proposedGamesJson}::jsonb, 'pending', NOW(), NOW())
+    `;
 
-    revalidatePath(`/event/${eventId}`);
+    if (eventId) revalidatePath(`/event/${eventId}`);
     revalidatePath(`/matches/${matchId}`);
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
     console.error('Error requesting score correction:', error);
@@ -81,11 +95,11 @@ export async function requestScoreCorrection(
 }
 
 /**
- * Get all score correction requests for an event (creator only)
+ * Get all score correction requests for an event (creator only, read-only)
  */
 export async function getEventCorrectionRequests(eventId: string) {
   const { userId } = await auth();
-  
+
   if (!userId) {
     throw new Error('Not authenticated');
   }
@@ -98,7 +112,6 @@ export async function getEventCorrectionRequests(eventId: string) {
     throw new Error('User not found');
   }
 
-  // Verify user is event creator
   const event = await prisma.event.findUnique({
     where: { id: eventId },
   });
@@ -109,7 +122,7 @@ export async function getEventCorrectionRequests(eventId: string) {
 
   try {
     const requests = await prisma.scoreCorrectionRequest.findMany({
-      where: { eventId },
+      where: { eventId: eventId },
       include: {
         requester: true,
         match: {
@@ -134,11 +147,11 @@ export async function getEventCorrectionRequests(eventId: string) {
 }
 
 /**
- * Approve a score correction request
+ * Approve a score correction request (opponent only). Updates match games and winner.
  */
 export async function approveCorrectionRequest(requestId: string) {
   const { userId } = await auth();
-  
+
   if (!userId) {
     throw new Error('Not authenticated');
   }
@@ -152,28 +165,51 @@ export async function approveCorrectionRequest(requestId: string) {
   }
 
   try {
-    // Get the request with event
     const request = await prisma.scoreCorrectionRequest.findUnique({
       where: { id: requestId },
-      include: { event: true },
+      include: { match: true },
     });
 
     if (!request) {
       return { success: false, error: 'Request not found' };
     }
-
-    // Verify user is event creator
-    if (request.event.creatorId !== user.id) {
-      return { success: false, error: 'Only event creator can approve requests' };
+    if (request.status !== 'pending') {
+      return { success: false, error: 'Request is no longer pending' };
+    }
+    if (!request.proposedGames || typeof request.proposedGames !== 'object') {
+      return { success: false, error: 'No proposed score to apply' };
     }
 
-    // Update request status
-    await prisma.scoreCorrectionRequest.update({
-      where: { id: requestId },
-      data: { status: 'approved' },
-    });
+    const opponentIds = getOpponentIds(
+      {
+        player1Id: request.match.player1Id,
+        player2Id: request.match.player2Id,
+        player3Id: request.match.player3Id,
+        player4Id: request.match.player4Id,
+        gameType: request.match.gameType,
+      },
+      request.requesterId
+    );
+    if (!opponentIds.includes(user.id)) {
+      return { success: false, error: 'Only the opponent can accept this correction' };
+    }
 
-    revalidatePath(`/event/${request.eventId}`);
+    const proposedGames = request.proposedGames as GameScore[];
+    const winner = determineMatchWinner(proposedGames);
+
+    await prisma.$transaction([
+      prisma.match.update({
+        where: { id: request.matchId },
+        data: { games: proposedGames as object, winner },
+      }),
+      prisma.scoreCorrectionRequest.update({
+        where: { id: requestId },
+        data: { status: 'approved' },
+      }),
+    ]);
+
+    revalidatePath(`/matches/${request.matchId}`);
+    if (request.eventId) revalidatePath(`/event/${request.eventId}`);
     return { success: true };
   } catch (error) {
     console.error('Error approving correction request:', error);
@@ -182,11 +218,11 @@ export async function approveCorrectionRequest(requestId: string) {
 }
 
 /**
- * Reject a score correction request
+ * Reject a score correction request (opponent only)
  */
 export async function rejectCorrectionRequest(requestId: string, reason?: string) {
   const { userId } = await auth();
-  
+
   if (!userId) {
     throw new Error('Not authenticated');
   }
@@ -200,36 +236,100 @@ export async function rejectCorrectionRequest(requestId: string, reason?: string
   }
 
   try {
-    // Get the request with event
     const request = await prisma.scoreCorrectionRequest.findUnique({
       where: { id: requestId },
-      include: { event: true },
+      include: { match: true },
     });
 
     if (!request) {
       return { success: false, error: 'Request not found' };
     }
-
-    // Verify user is event creator
-    if (request.event.creatorId !== user.id) {
-      return { success: false, error: 'Only event creator can reject requests' };
+    if (request.status !== 'pending') {
+      return { success: false, error: 'Request is no longer pending' };
     }
 
-    // Update request status
+    const opponentIds = getOpponentIds(
+      {
+        player1Id: request.match.player1Id,
+        player2Id: request.match.player2Id,
+        player3Id: request.match.player3Id,
+        player4Id: request.match.player4Id,
+        gameType: request.match.gameType,
+      },
+      request.requesterId
+    );
+    if (!opponentIds.includes(user.id)) {
+      return { success: false, error: 'Only the opponent can reject this correction' };
+    }
+
     await prisma.scoreCorrectionRequest.update({
       where: { id: requestId },
-      data: { 
+      data: {
         status: 'rejected',
-        // Optionally add rejection reason to the reason field
         ...(reason && { reason: `${request.reason}\n\nRejection reason: ${reason}` }),
       },
     });
 
-    revalidatePath(`/event/${request.eventId}`);
+    revalidatePath(`/matches/${request.matchId}`);
+    if (request.eventId) revalidatePath(`/event/${request.eventId}`);
     return { success: true };
   } catch (error) {
     console.error('Error rejecting correction request:', error);
     return { success: false, error: 'Failed to reject request' };
+  }
+}
+
+/**
+ * Get pending score correction requests where current user is the opponent (needs to accept/reject)
+ */
+export async function getPendingCorrectionRequestsForRespondent() {
+  const { userId } = await auth();
+  if (!userId) return [];
+
+  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  if (!user) return [];
+
+  try {
+    const pending = await prisma.scoreCorrectionRequest.findMany({
+      where: { status: 'pending', requesterId: { not: user.id } },
+      include: {
+        match: {
+          select: {
+            id: true,
+            player1Id: true,
+            player2Id: true,
+            player3Id: true,
+            player4Id: true,
+            gameType: true,
+          },
+        },
+        requester: { select: { name: true, userNumber: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const filtered = pending.filter((req) => {
+      const opponentIds = getOpponentIds(
+        {
+          player1Id: req.match.player1Id,
+          player2Id: req.match.player2Id,
+          player3Id: req.match.player3Id,
+          player4Id: req.match.player4Id,
+          gameType: req.match.gameType,
+        },
+        req.requesterId
+      );
+      return opponentIds.includes(user.id);
+    });
+    return filtered.map((req) => ({
+      id: req.id,
+      matchId: req.match.id,
+      requesterName: `${req.requester.name}#${req.requester.userNumber}`,
+      reason: req.reason,
+      createdAt: req.createdAt,
+    }));
+  } catch (error) {
+    console.error('Error fetching pending correction requests for respondent:', error);
+    return [];
   }
 }
 

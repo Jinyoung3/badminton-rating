@@ -1,27 +1,35 @@
 import { getMatchById } from '@/actions/matches';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { formatUserDisplayName } from '@/lib/utils';
 import Link from 'next/link';
 import RequestCorrectionForm from '@/components/RequestCorrectionForm';
+import CorrectionRequestRespond from '@/components/CorrectionRequestRespond';
 import { getCurrentUser } from '@/actions/user';
+import { getOpponentIds } from '@/lib/utils';
 
 interface MatchDetailPageProps {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 export default async function MatchDetailPage({ params }: MatchDetailPageProps) {
-  const match = await getMatchById(params.id);
+  const resolved = await Promise.resolve(params);
+  const matchId = resolved?.id;
+  if (!matchId) {
+    notFound();
+  }
+  const match = await getMatchById(matchId);
   const user = await getCurrentUser();
   if (!match) {
     notFound();
   }
-  const isParticipant = 
-  match.player1Id === user.id ||
-  match.player2Id === user.id ||
-  match.player3Id === user.id ||
-  match.player4Id === user.id;
+  if (!user) {
+    redirect('/sign-in');
+  }
+  const isParticipant =
+    match.player1Id === user.id ||
+    match.player2Id === user.id ||
+    match.player3Id === user.id ||
+    match.player4Id === user.id;
   const games = match.games as Array<{ team1: number; team2: number }>;
   const team1Games = games.filter(g => g.team1 > g.team2).length;
   const team2Games = games.filter(g => g.team2 > g.team1).length;
@@ -169,35 +177,86 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
         <div className="card">
           <h2 className="text-2xl font-bold mb-4">Score Correction Requests</h2>
           <div className="space-y-3">
-            {match.scoreCorrectionRequests.map((request: any) => (
-              <div key={request.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-medium text-yellow-800">
-                    {request.status.toUpperCase()}
-                  </span>
-                  <span className="text-xs text-gray-600">
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </span>
+            {match.scoreCorrectionRequests.map((request: any) => {
+              const opponentIds = getOpponentIds(
+                {
+                  player1Id: match.player1Id,
+                  player2Id: match.player2Id,
+                  player3Id: match.player3Id,
+                  player4Id: match.player4Id,
+                  gameType: match.gameType,
+                },
+                request.requesterId
+              );
+              const isRespondent = opponentIds.includes(user.id);
+              const isRequester = request.requesterId === user.id;
+              const requesterName = formatUserDisplayName(request.requester.name, request.requester.userNumber);
+              const proposedGames = request.proposedGames as Array<{ team1: number; team2: number }> | null;
+              const proposedDisplay = proposedGames?.map((g: { team1: number; team2: number }) => `${g.team1}-${g.team2}`).join(', ') ?? '—';
+
+              if (request.status === 'pending' && isRespondent) {
+                return (
+                  <CorrectionRequestRespond
+                    key={request.id}
+                    requestId={request.id}
+                    proposedGamesDisplay={proposedDisplay}
+                    reason={request.reason}
+                    requesterName={requesterName}
+                  />
+                );
+              }
+              if (request.status === 'pending' && isRequester) {
+                const players = [match.player1, match.player2, match.player3, match.player4].filter(Boolean);
+                const opponentNames = opponentIds
+                  .map((id) => {
+                    const p = players.find((x: any) => x?.id === id);
+                    return p ? formatUserDisplayName(p.name, p.userNumber) : '';
+                  })
+                  .filter(Boolean)
+                  .join(', ');
+                return (
+                  <div key={request.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <span className="text-xs font-medium text-yellow-800">PENDING</span>
+                    <div className="text-sm text-gray-700 mt-1">
+                      Waiting for {opponentNames || 'opponent'} to respond.
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Your reason: {request.reason}</div>
+                  </div>
+                );
+              }
+              return (
+                <div key={request.id} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-medium text-gray-700">
+                      {request.status.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Requested by: {requesterName}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">{request.reason}</div>
+                  {proposedDisplay !== '—' && (
+                    <div className="text-xs text-gray-500 mt-1">Proposed: {proposedDisplay}</div>
+                  )}
                 </div>
-                <div className="text-sm text-gray-700">
-                  Requested by: {formatUserDisplayName(request.requester.name, request.requester.userNumber)}
-                </div>
-                <div className="text-sm text-gray-600 mt-1">{request.reason}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-      {match.eventId && isParticipant && (
+      {isParticipant && (
         <div className="card mt-4">
           <h3 className="font-bold mb-3">Score Correction</h3>
           <p className="text-sm text-gray-600 mb-3">
-            Notice an error in the score? Request a correction from the event creator.
+            Notice an error in the score? Request a correction. Your opponent can accept or reject it.
           </p>
           <RequestCorrectionForm
             matchId={match.id}
-            eventId={match.eventId}
-            onSuccess={() => window.location.reload()}
+            eventId={match.eventId ?? undefined}
+            currentGames={games}
           />
         </div>
       )}

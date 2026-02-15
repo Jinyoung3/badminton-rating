@@ -2,7 +2,6 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { generateEventCode } from '@/lib/utils';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -31,16 +30,12 @@ export async function createEvent(data: {
   }
   
   try {
-    // Generate unique 4-digit code
-    const eventCode = await generateEventCode();
-    
     const event = await prisma.event.create({
       data: {
         name: data.name,
         description: data.description,
         location: data.location,
         date: data.date,
-        eventCode,
         organizationId: data.organizationId,
         creatorId: user.id,
       },
@@ -128,65 +123,6 @@ export async function getEventById(eventId: string) {
   } catch (error) {
     console.error('Error fetching event:', error);
     return null;
-  }
-}
-
-/**
- * Join an event using 4-digit code
- */
-export async function joinEvent(eventCode: string) {
-  const { userId } = await auth();
-  
-  if (!userId) {
-    throw new Error('Not authenticated');
-  }
-  
-  // Get current user
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-  
-  if (!user) {
-    throw new Error('User not found');
-  }
-  
-  try {
-    // Find event by code
-    const event = await prisma.event.findUnique({
-      where: { eventCode },
-    });
-    
-    if (!event) {
-      return { success: false, error: 'Event not found. Check the code and try again.' };
-    }
-    
-    // Check if already joined
-    const existing = await prisma.eventParticipant.findUnique({
-      where: {
-        eventId_userId: {
-          eventId: event.id,
-          userId: user.id,
-        },
-      },
-    });
-    
-    if (existing) {
-      return { success: false, error: 'You have already joined this event' };
-    }
-    
-    // Add participant
-    await prisma.eventParticipant.create({
-      data: {
-        eventId: event.id,
-        userId: user.id,
-      },
-    });
-    
-    revalidatePath('/event');
-    return { success: true, event };
-  } catch (error) {
-    console.error('Error joining event:', error);
-    return { success: false, error: 'Failed to join event' };
   }
 }
 

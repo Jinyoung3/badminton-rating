@@ -1,30 +1,3 @@
-import { prisma } from './prisma';
-
-/**
- * Generate a unique 4-digit event code
- */
-export async function generateEventCode(): Promise<string> {
-  let code: string;
-  let isUnique = false;
-  
-  while (!isUnique) {
-    // Generate random 4-digit number
-    code = Math.floor(1000 + Math.random() * 9000).toString();
-    
-    // Check if code already exists
-    const existing = await prisma.event.findUnique({
-      where: { eventCode: code },
-    });
-    
-    if (!existing) {
-      isUnique = true;
-      return code;
-    }
-  }
-  
-  throw new Error('Failed to generate unique event code');
-}
-
 /**
  * Format user display name with their user number
  * Example: "John Smith#20"
@@ -54,6 +27,19 @@ export function calculateGamesWonLost(
   });
   
   return { won, lost };
+}
+
+/**
+ * Get opponent user ids for a match (the side that did not request)
+ */
+export function getOpponentIds(
+  match: { player1Id: string; player2Id: string; player3Id: string | null; player4Id: string | null; gameType: string },
+  requesterId: string
+): string[] {
+  const team1Ids = match.gameType === 'doubles' ? [match.player1Id, match.player2Id] : [match.player1Id];
+  const team2Ids = match.gameType === 'doubles' ? [match.player3Id, match.player4Id].filter(Boolean) as string[] : [match.player2Id];
+  const isRequesterTeam1 = team1Ids.includes(requesterId);
+  return isRequesterTeam1 ? team2Ids : team1Ids;
 }
 
 /**

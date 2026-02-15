@@ -147,8 +147,8 @@ export default function MatchCard({ match, userId }: MatchCardProps) {
 
       {/* Game Scores */}
       <div className="mt-3 pt-3 border-t">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span>Games:</span>
+        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
+          <span className="shrink-0">Games:</span>
           {games.map((game, index) => (
             <span key={index} className="font-mono">
               {game.team1}-{game.team2}

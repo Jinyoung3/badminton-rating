@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
 import { formatUserDisplayName } from '@/lib/utils';
+import NotificationDropdown, { type NotificationItem } from '@/components/NotificationDropdown';
 
 interface User {
   id: string;
@@ -17,6 +18,7 @@ interface User {
 
 interface DashboardNavProps {
   user: User;
+  notifications: NotificationItem[];
 }
 
 const NAV_ITEMS = [
@@ -28,7 +30,7 @@ const NAV_ITEMS = [
   { label: 'Profile', href: '/profile' },
 ];
 
-export default function DashboardNav({ user }: DashboardNavProps) {
+export default function DashboardNav({ user, notifications }: DashboardNavProps) {
   const pathname = usePathname();
   
   return (
@@ -61,8 +63,8 @@ export default function DashboardNav({ user }: DashboardNavProps) {
             })}
           </div>
           
-          {/* User Info & Profile Button */}
-          <div className="flex items-center space-x-4">
+          {/* User Info, Notifications & Profile Button */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="hidden md:block text-right">
               <div className="text-sm font-medium text-gray-900">
                 {formatUserDisplayName(user.name, user.userNumber)}
@@ -72,6 +74,7 @@ export default function DashboardNav({ user }: DashboardNavProps) {
                 {user.organization && ` • ${user.organization.name}`}
               </div>
             </div>
+            <NotificationDropdown items={notifications} />
             <UserButton afterSignOutUrl="/sign-in" />
           </div>
         </div>

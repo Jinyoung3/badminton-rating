@@ -80,9 +80,13 @@ export async function getMatches(params?: {
 }
 
 /**
- * Get match by ID with full details
+ * Get match by ID with full details.
+ * Fetches match and correction requests separately so a bad relation never causes the whole lookup to fail.
  */
 export async function getMatchById(matchId: string) {
+  if (!matchId || typeof matchId !== 'string') {
+    return null;
+  }
   try {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
@@ -93,18 +97,23 @@ export async function getMatchById(matchId: string) {
         player4: true,
         event: true,
         creator: true,
-        scoreCorrectionRequests: {
-          include: {
-            requester: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
       },
     });
+    if (!match) return null;
 
-    return match;
+    let scoreCorrectionRequests: typeof match.scoreCorrectionRequests = [];
+    try {
+      const requests = await prisma.scoreCorrectionRequest.findMany({
+        where: { matchId },
+        include: { requester: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      scoreCorrectionRequests = requests as typeof match.scoreCorrectionRequests;
+    } catch (err) {
+      console.error('Error fetching score correction requests for match:', err);
+    }
+
+    return { ...match, scoreCorrectionRequests };
   } catch (error) {
     console.error('Error fetching match:', error);
     return null;

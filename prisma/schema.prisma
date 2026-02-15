@@ -83,7 +83,7 @@ model Event {
   description    String?
   location       String
   date           DateTime
-  eventCode      String   @unique // 4-digit code for joining
+  eventCode      String?  @unique // optional; no longer used for joining
   
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -113,19 +113,19 @@ model EventParticipant {
   @@unique([eventId, userId])
 }
 
-// Score correction requests (for event matches)
+// Score correction requests (event or challenge matches)
 model ScoreCorrectionRequest {
-  id          String   @id @default(cuid())
-  matchId     String
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  eventId     String
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  requesterId String
-  requester   User     @relation(fields: [requesterId], references: [id])
-  
-  reason      String   // Why correction is needed
-  status      String   @default("pending") // "pending", "approved", "rejected"
-  
+  id             String   @id @default(cuid())
+  matchId        String
+  match          Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  eventId        String?
+  event          Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  requesterId    String
+  requester      User     @relation(fields: [requesterId], references: [id])
+  proposedGames  Json?    // Proposed new score: [{ team1, team2 }, ...]
+  reason         String   // Why correction is needed
+  status         String   @default("pending") // "pending", "approved", "rejected"
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
