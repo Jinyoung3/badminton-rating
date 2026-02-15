@@ -1,24 +1,20 @@
-/**
- * 🔧 RATING ALGORITHM - CONSTANTS
- * 
- * Configuration values for the rating system
- * 
- * ⚠️ MODIFY THESE VALUES AS NEEDED
- */
-
 export const RATING_CONSTANTS = {
-  // Rating bounds
-  MIN_RATING: 0,      // Minimum possible rating
-  MAX_RATING: 9000,   // Target max (but overflow allowed)
-  ALLOW_OVERFLOW: true, // Allow ratings above MAX_RATING
+  // Glicko-2 default values
+  DEFAULT_MU: 1500,           // Default rating
+  DEFAULT_PHI: 350,           // Default rating deviation (uncertainty)
+  DEFAULT_SIGMA: 0.06,        // Default volatility
+  TAU: 0.5,                   // System volatility constraint (0.3-1.2 typical)
+  EPSILON: 0.000001,          // Convergence tolerance
+  
+  // Rating bounds (applied to mu only)
+  MIN_RATING: 0,
+  MAX_RATING: 3000,
+  ALLOW_OVERFLOW: true,
   
   // Initial rating calculation
-  MIN_SELF_RATING_SUM: 8,   // All questions answered 1
-  MAX_SELF_RATING_SUM: 80,  // All questions answered 10
-  
-  // Match adjustment (ELO-like K-factor)
-  K_FACTOR: 32,  // Standard K-factor for rating changes
+  MIN_SELF_RATING_SUM: 8,
+  MAX_SELF_RATING_SUM: 80,
   
   // Practice match settings
-  PRACTICE_AFFECTS_RATING: false, // Should practice matches affect rating?
+  PRACTICE_AFFECTS_RATING: false,
 } as const;

@@ -22,6 +22,10 @@ model User {
   winCount          Int      @default(0)
   lossCount         Int      @default(0)
   rating            Int      @default(0) // Calculated from selfRating initially
+  ratingMu          Float    @default(1500)    // The rating itself this is for glicko2
+  ratingPhi         Float    @default(350)     // Rating deviation (uncertainty)
+  ratingSigma       Float    @default(0.06)    // Volatility (consistency)
+  
   
   organizationId    String?
   organization      Organization? @relation(fields: [organizationId], references: [id])

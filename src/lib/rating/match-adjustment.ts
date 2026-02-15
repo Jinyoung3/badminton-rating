@@ -1,119 +1,150 @@
+import { Glicko2, WIN, LOSS } from './glicko2';
 import { RATING_CONSTANTS } from './constants';
+import type { PlayerRating } from './initial-rating';
 
-/**
- * 🔧 RATING ALGORITHM - MATCH OUTCOME ADJUSTMENT
- * 
- * Adjusts player ratings after a match
- * 
- * Current Logic: Simple ELO-like system (placeholder)
- * - Expected score based on rating difference
- * - Actual score: 1 for win, 0 for loss
- * - Rating change = K-factor × (actual - expected)
- * 
- * ⚠️ REPLACE THIS LOGIC WITH YOUR OWN ALGORITHM
- */
-
-/**
- * Calculate expected score (probability of winning) based on ratings
- * Uses standard ELO formula
- */
-function calculateExpectedScore(playerRating: number, opponentRating: number): number {
-  return 1 / (1 + Math.pow(10, (opponentRating - playerRating) / 400));
-}
-
-/**
- * Calculate rating change for a single player after a match
- * 
- * @param playerRating - Current rating of the player
- * @param opponentRating - Current rating of the opponent (or average for doubles)
- * @param won - Whether the player won the match
- * @param kFactor - Optional custom K-factor (defaults to constant)
- * @returns Rating change (can be negative)
- */
-export function calculateRatingChange(
-  playerRating: number,
-  opponentRating: number,
-  won: boolean,
-  kFactor: number = RATING_CONSTANTS.K_FACTOR
-): number {
-  const expectedScore = calculateExpectedScore(playerRating, opponentRating);
-  const actualScore = won ? 1 : 0;
-  const change = Math.round(kFactor * (actualScore - expectedScore));
-  
-  return change;
-}
-
-/**
- * Apply rating change to a player, respecting min/max bounds
- */
-export function applyRatingChange(currentRating: number, change: number): number {
-  const newRating = currentRating + change;
-  
-  // Enforce minimum rating of 0
-  if (newRating < RATING_CONSTANTS.MIN_RATING) {
-    return RATING_CONSTANTS.MIN_RATING;
-  }
-  
-  // Allow overflow above MAX_RATING if configured
-  if (!RATING_CONSTANTS.ALLOW_OVERFLOW && newRating > RATING_CONSTANTS.MAX_RATING) {
-    return RATING_CONSTANTS.MAX_RATING;
-  }
-  
-  return newRating;
-}
+// Initialize Glicko-2 system
+const glicko = new Glicko2({
+  mu: RATING_CONSTANTS.DEFAULT_MU,
+  phi: RATING_CONSTANTS.DEFAULT_PHI,
+  sigma: RATING_CONSTANTS.DEFAULT_SIGMA,
+  tau: RATING_CONSTANTS.TAU,
+  epsilon: RATING_CONSTANTS.EPSILON,
+});
 
 /**
  * Calculate rating changes for a singles match
  */
 export function calculateSinglesRatingChanges(
-  player1Rating: number,
-  player2Rating: number,
+  player1Rating: PlayerRating,
+  player2Rating: PlayerRating,
   winner: 'team1' | 'team2'
-): { player1Change: number; player2Change: number } {
-  const player1Won = winner === 'team1';
-  
-  const player1Change = calculateRatingChange(player1Rating, player2Rating, player1Won);
-  const player2Change = calculateRatingChange(player2Rating, player1Rating, !player1Won);
-  
+): {
+  player1NewRating: PlayerRating;
+  player2NewRating: PlayerRating;
+  player1Change: number;
+  player2Change: number;
+} {
+  const [newRating1, newRating2] = glicko.rate1v1(
+    player1Rating,
+    player2Rating,
+    false // not a draw
+  );
+
+  // For display purposes, calculate mu change
+  const player1Change = Math.round(newRating1.mu - player1Rating.mu);
+  const player2Change = Math.round(newRating2.mu - player2Rating.mu);
+
   return {
+    player1NewRating: newRating1,
+    player2NewRating: newRating2,
     player1Change,
     player2Change,
   };
 }
 
 /**
- * Calculate rating changes for a doubles match
- * Team 1: player1 + player2
- * Team 2: player3 + player4
+ * Calculate rating changes for doubles match
+ * Each player is rated against opponent team average
  */
 export function calculateDoublesRatingChanges(
-  player1Rating: number,
-  player2Rating: number,
-  player3Rating: number,
-  player4Rating: number,
+  player1Rating: PlayerRating,
+  player2Rating: PlayerRating,
+  player3Rating: PlayerRating,
+  player4Rating: PlayerRating,
   winner: 'team1' | 'team2'
 ): {
+  player1NewRating: PlayerRating;
+  player2NewRating: PlayerRating;
+  player3NewRating: PlayerRating;
+  player4NewRating: PlayerRating;
   player1Change: number;
   player2Change: number;
   player3Change: number;
   player4Change: number;
 } {
-  // Calculate average team ratings
-  const team1AvgRating = (player1Rating + player2Rating) / 2;
-  const team2AvgRating = (player3Rating + player4Rating) / 2;
-  
   const team1Won = winner === 'team1';
-  
-  // Each player's change is based on their team avg vs opponent team avg
-  const player1Change = calculateRatingChange(player1Rating, team2AvgRating, team1Won);
-  const player2Change = calculateRatingChange(player2Rating, team2AvgRating, team1Won);
-  const player3Change = calculateRatingChange(player3Rating, team1AvgRating, !team1Won);
-  const player4Change = calculateRatingChange(player4Rating, team1AvgRating, !team1Won);
-  
-  return {
-    player1Change,
-    player2Change,
-    player3Change,
-    player4Change,
+
+  // Calculate opponent team averages
+  const team2AvgRating: PlayerRating = {
+    mu: (player3Rating.mu + player4Rating.mu) / 2,
+    phi: Math.sqrt((player3Rating.phi ** 2 + player4Rating.phi ** 2) / 2),
+    sigma: (player3Rating.sigma + player4Rating.sigma) / 2,
   };
+
+  const team1AvgRating: PlayerRating = {
+    mu: (player1Rating.mu + player2Rating.mu) / 2,
+    phi: Math.sqrt((player1Rating.phi ** 2 + player2Rating.phi ** 2) / 2),
+    sigma: (player1Rating.sigma + player2Rating.sigma) / 2,
+  };
+
+  // Rate each player against opponent team average
+  const newPlayer1 = glicko.rate(player1Rating, [
+    { score: team1Won ? WIN : LOSS, opponentRating: team2AvgRating }
+  ]);
+
+  const newPlayer2 = glicko.rate(player2Rating, [
+    { score: team1Won ? WIN : LOSS, opponentRating: team2AvgRating }
+  ]);
+
+  const newPlayer3 = glicko.rate(player3Rating, [
+    { score: team1Won ? LOSS : WIN, opponentRating: team1AvgRating }
+  ]);
+
+  const newPlayer4 = glicko.rate(player4Rating, [
+    { score: team1Won ? LOSS : WIN, opponentRating: team1AvgRating }
+  ]);
+
+  return {
+    player1NewRating: newPlayer1,
+    player2NewRating: newPlayer2,
+    player3NewRating: newPlayer3,
+    player4NewRating: newPlayer4,
+    player1Change: Math.round(newPlayer1.mu - player1Rating.mu),
+    player2Change: Math.round(newPlayer2.mu - player2Rating.mu),
+    player3Change: Math.round(newPlayer3.mu - player3Rating.mu),
+    player4Change: Math.round(newPlayer4.mu - player4Rating.mu),
+  };
+}
+
+/**
+ * Apply rating bounds to mu value only
+ */
+export function applyRatingBounds(rating: PlayerRating): PlayerRating {
+  let boundedMu = rating.mu;
+
+  if (boundedMu < RATING_CONSTANTS.MIN_RATING) {
+    boundedMu = RATING_CONSTANTS.MIN_RATING;
+  }
+
+  if (!RATING_CONSTANTS.ALLOW_OVERFLOW && boundedMu > RATING_CONSTANTS.MAX_RATING) {
+    boundedMu = RATING_CONSTANTS.MAX_RATING;
+  }
+
+  return {
+    mu: boundedMu,
+    phi: rating.phi,
+    sigma: rating.sigma,
+  };
+}
+
+// Legacy function for backwards compatibility
+export function calculateRatingChange(
+  playerRating: number,
+  opponentRating: number,
+  won: boolean
+): number {
+  // Convert to Glicko-2, calculate, return mu change
+  const player: PlayerRating = { mu: playerRating, phi: 350, sigma: 0.06 };
+  const opponent: PlayerRating = { mu: opponentRating, phi: 350, sigma: 0.06 };
+  const [newRating] = glicko.rate1v1(player, opponent, false);
+  return Math.round(newRating.mu - playerRating);
+}
+
+export function applyRatingChange(currentRating: number, change: number): number {
+  const newRating = currentRating + change;
+  if (newRating < RATING_CONSTANTS.MIN_RATING) return RATING_CONSTANTS.MIN_RATING;
+  if (!RATING_CONSTANTS.ALLOW_OVERFLOW && newRating > RATING_CONSTANTS.MAX_RATING) {
+    return RATING_CONSTANTS.MAX_RATING;
+  }
+  return newRating;
 }

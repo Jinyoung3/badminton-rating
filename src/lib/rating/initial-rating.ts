@@ -1,48 +1,45 @@
 import { RATING_CONSTANTS } from './constants';
 
-/**
- * 🔧 RATING ALGORITHM - INITIAL RATING
- * 
- * Converts self-rating questionnaire (8 questions, 1-10 each) to initial rating (0-9000+)
- * 
- * Current Logic:
- * - Sum all answers (min: 8, max: 80)
- * - Map linearly to 0-9000 range
- * - If all 1's → 0
- * - If all 10's → 9000
- * - Mixed values → proportional calculation
- * 
- * ⚠️ REPLACE THIS LOGIC WITH YOUR OWN ALGORITHM
- */
-
 export interface SelfRatingAnswers {
-  question1: number; // How comfortable are you with basic grip and footwork?
-  question2: number; // Can you rally consistently without mistakes?
-  question3: number; // How well do you control shot placement?
-  question4: number; // How strong and consistent is your overhead technique?
-  question5: number; // How well do you move and recover on court?
-  question6: number; // How do you handle match situations and strategy?
-  question7: number; // How experienced are you with competitive play?
-  question8: number; // Can you teach or analyze badminton technique?
+  question1: number;
+  question2: number;
+  question3: number;
+  question4: number;
+  question5: number;
+  question6: number;
+  question7: number;
+  question8: number;
 }
 
-export function calculateInitialRating(selfRating: SelfRatingAnswers): number {
-  const { MIN_RATING, MAX_RATING, MIN_SELF_RATING_SUM, MAX_SELF_RATING_SUM } = RATING_CONSTANTS;
+// NEW: Rating object structure
+export interface PlayerRating {
+  mu: number;      // Rating value
+  phi: number;     // Rating deviation (uncertainty)
+  sigma: number;   // Volatility
+}
+
+/**
+ * Calculate initial Glicko-2 rating from self-assessment
+ */
+export function calculateInitialRating(selfRating: SelfRatingAnswers): PlayerRating {
+  const { MIN_RATING, MAX_RATING, MIN_SELF_RATING_SUM, MAX_SELF_RATING_SUM, DEFAULT_PHI, DEFAULT_SIGMA } = RATING_CONSTANTS;
   
   // Sum all self-rating values
   const sum = Object.values(selfRating).reduce((acc, val) => acc + val, 0);
   
-  // Linear interpolation: map [8, 80] → [0, 9000]
-  const rating = MIN_RATING + 
+  // Calculate mu (rating) using linear interpolation
+  const mu = MIN_RATING + 
     ((sum - MIN_SELF_RATING_SUM) / (MAX_SELF_RATING_SUM - MIN_SELF_RATING_SUM)) * 
     (MAX_RATING - MIN_RATING);
   
-  return Math.round(rating);
+  // New players start with high uncertainty and default volatility
+  return {
+    mu: Math.round(mu),
+    phi: DEFAULT_PHI,
+    sigma: DEFAULT_SIGMA,
+  };
 }
 
-/**
- * Validate that all self-rating answers are within valid range (1-10)
- */
 export function validateSelfRating(selfRating: SelfRatingAnswers): boolean {
   return Object.values(selfRating).every(val => val >= 1 && val <= 10);
 }

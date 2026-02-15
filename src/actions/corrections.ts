@@ -78,7 +78,7 @@ export async function requestScoreCorrection(
     // Raw INSERT to avoid Prisma create input requiring both match and event relation objects (event is optional in schema)
     const id = randomUUID();
     const eventIdValue = eventId != null && eventId !== '' ? eventId : null;
-    const proposedGamesJson = JSON.stringify(proposedGames);
+    const proposedGamesJson = JSON.stringify(proposedGames) as any;
     await prisma.$executeRaw`
       INSERT INTO "ScoreCorrectionRequest" (id, "matchId", "eventId", "requesterId", reason, "proposedGames", status, "createdAt", "updatedAt")
       VALUES (${id}, ${matchId}, ${eventIdValue}, ${user.id}, ${reason}, ${proposedGamesJson}::jsonb, 'pending', NOW(), NOW())

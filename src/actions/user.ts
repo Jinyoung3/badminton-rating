@@ -67,7 +67,11 @@ export async function createUserProfile(data: {
         location: data.location,
         preferredGameType: data.preferredGameType,
         organizationId: data.organizationId,
-        rating: initialRating,
+        // NEW: Store Glicko-2 rating
+        ratingMu: initialRating.mu,
+        ratingPhi: initialRating.phi,
+        ratingSigma: initialRating.sigma,
+        rating: Math.round(initialRating.mu),
         profileCompleted: true,
         selfRating: {
           create: {
@@ -119,7 +123,10 @@ export async function updateSelfRating(selfRating: SelfRatingAnswers) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        rating: newRating,
+        ratingMu: newRating.mu,
+        ratingPhi: newRating.phi,
+        ratingingSigma: newRating.sigma,
+        rating: Math.round(newRating.mu),
         selfRating: {
           upsert: {
             create: {
