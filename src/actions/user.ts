@@ -4,7 +4,6 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { calculateInitialRating, type SelfRatingAnswers } from '@/lib/rating/calculator';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 /**
  * Get current user's profile from database
@@ -53,11 +52,9 @@ export async function createUserProfile(data: {
     throw new Error('Not authenticated');
   }
   
-  // Calculate initial rating from self-assessment
   const initialRating = calculateInitialRating(data.selfRating);
   
   try {
-    // Create user with profile and self-rating in a transaction
     const user = await prisma.user.create({
       data: {
         clerkId: userId,
@@ -67,7 +64,6 @@ export async function createUserProfile(data: {
         location: data.location,
         preferredGameType: data.preferredGameType,
         organizationId: data.organizationId,
-        // NEW: Store Glicko-2 rating
         ratingMu: initialRating.mu,
         ratingPhi: initialRating.phi,
         ratingSigma: initialRating.sigma,
@@ -101,6 +97,11 @@ export async function createUserProfile(data: {
 }
 
 /**
+ * Alias for createUserProfile to fix import errors in components
+ */
+export const completeProfile = createUserProfile;
+
+/**
  * Update user's self-rating and recalculate rating
  */
 export async function updateSelfRating(selfRating: SelfRatingAnswers) {
@@ -110,11 +111,10 @@ export async function updateSelfRating(selfRating: SelfRatingAnswers) {
     throw new Error('Not authenticated');
   }
   
-  // Calculate new rating from self-assessment
   const newRating = calculateInitialRating(selfRating);
   
-  // ADD VALIDATION
-  if (typeof newRating !== 'number' || isNaN(newRating)) {
+  // Validation fix: Check for property existence on the Rating object
+  if (!newRating || typeof newRating.mu !== 'number') {
     console.error('Invalid rating calculated:', newRating, 'from selfRating:', selfRating);
     return { success: false, error: 'Failed to calculate rating' };
   }
@@ -125,7 +125,7 @@ export async function updateSelfRating(selfRating: SelfRatingAnswers) {
       data: {
         ratingMu: newRating.mu,
         ratingPhi: newRating.phi,
-        ratingingSigma: newRating.sigma,
+        ratingSigma: newRating.sigma, // Fixed typo from 'ratingingSigma'
         rating: Math.round(newRating.mu),
         selfRating: {
           upsert: {
@@ -167,10 +167,7 @@ export async function updateSelfRating(selfRating: SelfRatingAnswers) {
  */
 export async function switchOrganization(organizationId: string) {
   const user = await getCurrentUser();
-  
-  if (!user) {
-    throw new Error('Not authenticated');
-  }
+  if (!user) throw new Error('Not authenticated');
   
   try {
     await prisma.user.update({
@@ -185,8 +182,9 @@ export async function switchOrganization(organizationId: string) {
     return { success: false, error: 'Failed to switch organization' };
   }
 }
+
 /**
- * Update user profile (name, location, preferred game type, sex)
+ * Update user profile details
  */
 export async function updateProfile(data: {
   name?: string;
@@ -195,10 +193,7 @@ export async function updateProfile(data: {
   sex?: string;
 }) {
   const user = await getCurrentUser();
-  
-  if (!user) {
-    throw new Error('Not authenticated');
-  }
+  if (!user) throw new Error('Not authenticated');
   
   try {
     await prisma.user.update({

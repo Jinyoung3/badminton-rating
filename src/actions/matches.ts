@@ -28,6 +28,7 @@ export async function getMatches(params?: {
   } = params || {};
 
   try {
+    // 1. Initialize the base where clause
     const whereClause: any = {
       ...(gameType && { gameType }),
       ...(matchType && { type: matchType }),
@@ -40,18 +41,14 @@ export async function getMatches(params?: {
           { player4Id: playerId },
         ],
       }),
-      ...(startDate && {
-        matchDate: {
-          gte: startDate,
-        },
-      }),
-      ...(endDate && {
-        matchDate: {
-          ...whereClause.matchDate,
-          lte: endDate,
-        },
-      }),
     };
+
+    // 2. Add matchDate filters safely
+    if (startDate || endDate) {
+      whereClause.matchDate = {};
+      if (startDate) whereClause.matchDate.gte = startDate;
+      if (endDate) whereClause.matchDate.lte = endDate;
+    }
 
     const [matches, total] = await Promise.all([
       prisma.match.findMany({
@@ -81,7 +78,7 @@ export async function getMatches(params?: {
 
 /**
  * Get match by ID with full details.
- * Fetches match and correction requests separately so a bad relation never causes the whole lookup to fail.
+ * Updated to include nested organization relations for players and events.
  */
 export async function getMatchById(matchId: string) {
   if (!matchId || typeof matchId !== 'string') {
@@ -91,35 +88,31 @@ export async function getMatchById(matchId: string) {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
       include: {
-        player1: true,
-        player2: true,
-        player3: true,
-        player4: true,
-        event: true,
+        // Fetch players and their respective organizations
+        player1: { include: { organization: true } },
+        player2: { include: { organization: true } },
+        player3: { include: { organization: true } },
+        player4: { include: { organization: true } },
+        
+        // Fetch the event and its organization
+        event: { include: { organization: true } },
+        
         creator: true,
+        
+        // Fetch correction requests with requester details
+        scoreCorrectionRequests: {
+          include: { requester: true },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
-    if (!match) return null;
 
-    let scoreCorrectionRequests: typeof match.scoreCorrectionRequests = [];
-    try {
-      const requests = await prisma.scoreCorrectionRequest.findMany({
-        where: { matchId },
-        include: { requester: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      scoreCorrectionRequests = requests as typeof match.scoreCorrectionRequests;
-    } catch (err) {
-      console.error('Error fetching score correction requests for match:', err);
-    }
-
-    return { ...match, scoreCorrectionRequests };
+    return match;
   } catch (error) {
     console.error('Error fetching match:', error);
     return null;
   }
 }
-
 /**
  * Get recent matches for a user (for dashboard)
  */
