@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/actions/user';
 import { getEvents, getMyEvents } from '@/actions/event';
 import Link from 'next/link';
 import JoinEventButton from '@/components/JoinEventButton';
+import JoinEventByIdButton from '@/components/JoinEventByIdButton';
 import { formatUserDisplayName } from '@/lib/utils';
 
 export default async function EventPage() {
@@ -123,9 +124,12 @@ export default async function EventPage() {
                     By {formatUserDisplayName(event.creator.name, event.creator.userNumber)}
                   </p>
                   {!hasJoined && !isCreator && (
-                    <div className="mt-3 text-xs text-gray-400">
-                      Code: <span className="font-mono font-bold">{event.eventCode}</span>
-                    </div>
+                    <>
+                      <JoinEventByIdButton eventId={event.id} />
+                      <div className="mt-2 text-xs text-gray-400">
+                        Code: <span className="font-mono font-bold">{event.eventCode}</span>
+                      </div>
+                    </>
                   )}
                 </Link>
               );

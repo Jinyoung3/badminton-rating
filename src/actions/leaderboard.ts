@@ -27,6 +27,26 @@ export async function getOrganizationLeaderboard(organizationId: string) {
 }
 
 /**
+ * Get global leaderboard (all users in the database)
+ */
+export async function getGlobalLeaderboard() {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: {
+        rating: 'desc',
+      },
+      include: {
+        organization: true,
+      },
+    });
+    return users;
+  } catch (error) {
+    console.error('Error fetching global leaderboard:', error);
+    return [];
+  }
+}
+
+/**
  * Get all organizations with member counts for leaderboard navigation
  */
 export async function getOrganizationsForLeaderboard() {

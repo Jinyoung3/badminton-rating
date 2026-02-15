@@ -51,7 +51,20 @@ export async function recordChallengeMatch(data: {
     if (data.gameType === 'doubles' && (!data.player3Id || !data.player4Id)) {
       return { success: false, error: 'Doubles matches require 4 players' };
     }
-    
+
+    const playerIds = [
+      data.player1Id,
+      data.player2Id,
+      ...(data.player3Id ? [data.player3Id] : []),
+      ...(data.player4Id ? [data.player4Id] : []),
+    ];
+    if (!playerIds.includes(user.id)) {
+      return {
+        success: false,
+        error: 'You can only record a challenge match if you are one of the players.',
+      };
+    }
+
     // Determine winner
     const winner = determineMatchWinner(data.games);
     

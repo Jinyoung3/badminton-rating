@@ -191,6 +191,61 @@ export async function joinEvent(eventCode: string) {
 }
 
 /**
+ * Join an event by ID (e.g. from the event list)
+ */
+export async function joinEventById(eventId: string) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error('Not authenticated');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      return { success: false, error: 'Event not found.' };
+    }
+
+    const existing = await prisma.eventParticipant.findUnique({
+      where: {
+        eventId_userId: {
+          eventId: event.id,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (existing) {
+      return { success: false, error: 'You have already joined this event' };
+    }
+
+    await prisma.eventParticipant.create({
+      data: {
+        eventId: event.id,
+        userId: user.id,
+      },
+    });
+
+    revalidatePath('/event');
+    return { success: true, event };
+  } catch (error) {
+    console.error('Error joining event:', error);
+    return { success: false, error: 'Failed to join event' };
+  }
+}
+
+/**
  * Leave an event
  */
 export async function leaveEvent(eventId: string) {

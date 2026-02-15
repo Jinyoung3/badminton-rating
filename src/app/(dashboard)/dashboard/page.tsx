@@ -1,14 +1,17 @@
 import { getCurrentUser } from '@/actions/user';
+import { getRecentMatches } from '@/actions/matches';
 import { formatUserDisplayName } from '@/lib/utils';
 import Link from 'next/link';
+import MatchCard from '@/components/MatchCard';
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  
+  const recentMatches = await getRecentMatches(10);
+
   if (!user) {
     return null;
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -82,14 +85,22 @@ export default async function DashboardPage() {
         </Link>
       </div>
       
-      {/* Recent Activity Placeholder */}
+      {/* Recent Activity */}
       <div className="card">
         <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-4xl mb-2">📊</p>
-          <p>No recent matches or events</p>
-          <p className="text-sm mt-1">Start by recording a match or joining an event!</p>
-        </div>
+        {recentMatches.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-4xl mb-2">📊</p>
+            <p>No recent matches or events</p>
+            <p className="text-sm mt-1">Start by recording a match or joining an event!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentMatches.map((match) => (
+              <MatchCard key={match.id} match={match} userId={user.id} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
