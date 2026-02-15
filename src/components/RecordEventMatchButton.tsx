@@ -128,21 +128,51 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
       games,
     });
     
+    // if (result.success) {
+    //   // Show rating changes
+    //   const winner = calculateWinner();
+    //   alert(
+    //     `Match recorded successfully!\n\n` +
+    //     `${getTeamLabel(1)} ${winner === 'team1' ? 'wins!' : 'loses'}\n` +
+    //     `Rating changes:\n` +
+    //     `Player 1: ${result.ratingChanges.player1Change >= 0 ? '+' : ''}${result.ratingChanges.player1Change}\n` +
+    //     `Player 2: ${result.ratingChanges.player2Change >= 0 ? '+' : ''}${result.ratingChanges.player2Change}` +
+    //     (gameType === 'doubles' 
+    //       ? `\nPlayer 3: ${result.ratingChanges.player3Change! >= 0 ? '+' : ''}${result.ratingChanges.player3Change}\n` +
+    //         `Player 4: ${result.ratingChanges.player4Change! >= 0 ? '+' : ''}${result.ratingChanges.player4Change}`
+    //       : ''
+    //     )
+    //   );
+      
+    //   setShowModal(false);
+    //   resetForm();
+    //   router.refresh();
+    // } else {
+    //   alert(result.error || 'Failed to record match');
+    // }
     if (result.success) {
       // Show rating changes
       const winner = calculateWinner();
-      alert(
-        `Match recorded successfully!\n\n` +
-        `${getTeamLabel(1)} ${winner === 'team1' ? 'wins!' : 'loses'}\n` +
-        `Rating changes:\n` +
-        `Player 1: ${result.ratingChanges.player1Change >= 0 ? '+' : ''}${result.ratingChanges.player1Change}\n` +
-        `Player 2: ${result.ratingChanges.player2Change >= 0 ? '+' : ''}${result.ratingChanges.player2Change}` +
-        (gameType === 'doubles' 
-          ? `\nPlayer 3: ${result.ratingChanges.player3Change! >= 0 ? '+' : ''}${result.ratingChanges.player3Change}\n` +
-            `Player 4: ${result.ratingChanges.player4Change! >= 0 ? '+' : ''}${result.ratingChanges.player4Change}`
-          : ''
-        )
-      );
+      
+      // FIX: Check if ratingChanges exists and use type casting for the alert display
+      const changes = result.ratingChanges as any;
+      
+      if (changes) {
+        alert(
+          `Match recorded successfully!\n\n` +
+          `${getTeamLabel(1)} ${winner === 'team1' ? 'wins!' : 'loses'}\n` +
+          `Rating changes:\n` +
+          `Player 1: ${changes.player1Change >= 0 ? '+' : ''}${changes.player1Change}\n` +
+          `Player 2: ${changes.player2Change >= 0 ? '+' : ''}${changes.player2Change}` +
+          (gameType === 'doubles' 
+            ? `\nPlayer 3: ${changes.player3Change >= 0 ? '+' : ''}${changes.player3Change}\n` +
+              `Player 4: ${changes.player4Change >= 0 ? '+' : ''}${changes.player4Change}`
+            : ''
+          )
+        );
+      } else {
+        alert('Match recorded successfully!');
+      }
       
       setShowModal(false);
       resetForm();
@@ -150,7 +180,6 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
     } else {
       alert(result.error || 'Failed to record match');
     }
-    
     setIsSubmitting(false);
   };
   

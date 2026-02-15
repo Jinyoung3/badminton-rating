@@ -1,3 +1,5 @@
+'use server';
+
 import { redirect } from 'next/navigation';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
@@ -57,7 +59,11 @@ export default async function BypassPage() {
         location: 'Test City',
         preferredGameType: 'Singles',
         organizationId: defaultOrg.id,
-        rating: initialRating,
+        // FIX: Map individual rating components and round mu for the display rating
+        ratingMu: initialRating.mu,
+        ratingPhi: initialRating.phi,
+        ratingSigma: initialRating.sigma,
+        rating: Math.round(initialRating.mu),
         profileCompleted: true,
         selfRating: {
           create: {

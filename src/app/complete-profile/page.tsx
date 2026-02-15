@@ -58,5 +58,5 @@ export default async function CompleteProfilePage() {
 //     redirect('/sign-in');
 //   }
 
-//   return <ProfileCompletionClient />;
+//   return <ProfileCompletionClient email={user.emailAddresses[0]?.emailAddress ?? ''} />
 // }

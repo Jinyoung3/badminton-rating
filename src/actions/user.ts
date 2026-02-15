@@ -97,9 +97,29 @@ export async function createUserProfile(data: {
 }
 
 /**
- * Alias for createUserProfile to fix import errors in components
+ * Wrapper function to avoid "Cannot redefine property: $$id" error.
+ * This provides a new function reference for the Server Action registry.
  */
-export const completeProfile = createUserProfile;
+export async function completeProfile(data: {
+  email: string;
+  name: string;
+  sex: string;
+  location: string;
+  preferredGameType: string;
+  organizationId: string;
+  selfRating: {
+    question1: number;
+    question2: number;
+    question3: number;
+    question4: number;
+    question5: number;
+    question6: number;
+    question7: number;
+    question8: number;
+  };
+}) {
+  return createUserProfile(data);
+}
 
 /**
  * Update user's self-rating and recalculate rating
