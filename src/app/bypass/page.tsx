@@ -1,10 +1,8 @@
-'use server';
-
 import { redirect } from 'next/navigation';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { calculateInitialRating } from '@/lib/rating/calculator';
-
+export const dynamic = 'force-dynamic';
 export default async function BypassPage() {
   try {
     const { userId } = await auth();

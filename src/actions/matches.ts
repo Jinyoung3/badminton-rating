@@ -3,9 +3,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-/**
- * Get all matches with optional filters
- */
 export async function getMatches(params?: {
   gameType?: 'singles' | 'doubles';
   matchType?: 'event' | 'challenge' | 'practice';
@@ -28,7 +25,7 @@ export async function getMatches(params?: {
   } = params || {};
 
   try {
-    // 1. Initialize the base where clause
+    // 1. Fix: Declare whereClause before adding matchDate
     const whereClause: any = {
       ...(gameType && { gameType }),
       ...(matchType && { type: matchType }),
@@ -54,15 +51,13 @@ export async function getMatches(params?: {
       prisma.match.findMany({
         where: whereClause,
         include: {
-          player1: true,
-          player2: true,
-          player3: true,
-          player4: true,
-          event: true,
+          player1: { include: { organization: true } },
+          player2: { include: { organization: true } },
+          player3: { include: { organization: true } },
+          player4: { include: { organization: true } },
+          event: { include: { organization: true } },
         },
-        orderBy: {
-          matchDate: 'desc',
-        },
+        orderBy: { matchDate: 'desc' },
         take: limit,
         skip: offset,
       }),
@@ -78,28 +73,21 @@ export async function getMatches(params?: {
 
 /**
  * Get match by ID with full details.
- * Updated to include nested organization relations for players and events.
+ * Fixed: Consolidated into one query with includes to avoid type errors.
  */
 export async function getMatchById(matchId: string) {
-  if (!matchId || typeof matchId !== 'string') {
-    return null;
-  }
+  if (!matchId || typeof matchId !== 'string') return null;
+
   try {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
       include: {
-        // Fetch players and their respective organizations
         player1: { include: { organization: true } },
         player2: { include: { organization: true } },
         player3: { include: { organization: true } },
         player4: { include: { organization: true } },
-        
-        // Fetch the event and its organization
         event: { include: { organization: true } },
-        
         creator: true,
-        
-        // Fetch correction requests with requester details
         scoreCorrectionRequests: {
           include: { requester: true },
           orderBy: { createdAt: 'desc' },

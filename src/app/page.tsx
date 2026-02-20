@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { getCurrentUser } from '@/actions/user';
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   try {
