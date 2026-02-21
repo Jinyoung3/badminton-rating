@@ -61,77 +61,89 @@ export async function createUserProfile(data: {
     if (!org) organizationId = null;
   }
 
+  const selfRatingData = {
+    question1: data.selfRating.question1,
+    question2: data.selfRating.question2,
+    question3: data.selfRating.question3,
+    question4: data.selfRating.question4,
+    question5: data.selfRating.question5,
+    question6: data.selfRating.question6,
+    question7: data.selfRating.question7,
+    question8: data.selfRating.question8,
+  };
+
+  const userUpdateData = {
+    profileCompleted: true,
+    name: data.name,
+    sex: data.sex,
+    location: data.location,
+    preferredGameType: data.preferredGameType,
+    organizationId,
+    ratingMu: initialRating.mu,
+    ratingPhi: initialRating.phi,
+    ratingSigma: initialRating.sigma,
+    rating: Math.round(initialRating.mu),
+  };
+
   try {
-    const user = await prisma.user.upsert({
+    // 1) Find by clerkId (existing linked user)
+    let user = await prisma.user.findUnique({
       where: { clerkId: userId },
-      update: {
-        profileCompleted: true,
-        name: data.name,
-        sex: data.sex,
-        location: data.location,
-        preferredGameType: data.preferredGameType,
-        organizationId,
-        ratingMu: initialRating.mu,
-        ratingPhi: initialRating.phi,
-        ratingSigma: initialRating.sigma,
-        rating: Math.round(initialRating.mu),
-      },
-      create: {
-        clerkId: userId,
-        email: data.email,
-        name: data.name,
-        sex: data.sex,
-        location: data.location,
-        preferredGameType: data.preferredGameType,
-        organizationId,
-        ratingMu: initialRating.mu,
-        ratingPhi: initialRating.phi,
-        ratingSigma: initialRating.sigma,
-        rating: Math.round(initialRating.mu),
-        profileCompleted: true,
-        selfRating: {
-          create: {
-            question1: data.selfRating.question1,
-            question2: data.selfRating.question2,
-            question3: data.selfRating.question3,
-            question4: data.selfRating.question4,
-            question5: data.selfRating.question5,
-            question6: data.selfRating.question6,
-            question7: data.selfRating.question7,
-            question8: data.selfRating.question8,
-          },
-        },
-      },
-      include: {
-        organization: true,
-        selfRating: true,
-      },
+      include: { organization: true, selfRating: true },
     });
 
-    // Upsert SelfRating in a separate call (nested 1:1 upsert can be unreliable in Prisma)
+    if (user) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: userUpdateData,
+      });
+    } else {
+      // 2) Find by email (same person, new Clerk session – link account)
+      const existingByEmail = await prisma.user.findUnique({
+        where: { email: data.email.trim() },
+      });
+      if (existingByEmail) {
+        await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { ...userUpdateData, clerkId: userId },
+        });
+        user = await prisma.user.findUnique({
+          where: { id: existingByEmail.id },
+          include: { organization: true, selfRating: true },
+        })!;
+      } else {
+        // 3) New user – create
+        user = await prisma.user.create({
+          data: {
+            clerkId: userId,
+            email: data.email.trim(),
+            name: data.name,
+            sex: data.sex,
+            location: data.location,
+            preferredGameType: data.preferredGameType,
+            organizationId,
+            ratingMu: initialRating.mu,
+            ratingPhi: initialRating.phi,
+            ratingSigma: initialRating.sigma,
+            rating: Math.round(initialRating.mu),
+            profileCompleted: true,
+            selfRating: {
+              create: selfRatingData,
+            },
+          },
+          include: {
+            organization: true,
+            selfRating: true,
+          },
+        });
+      }
+    }
+
+    // Upsert SelfRating (create or update)
     await prisma.selfRating.upsert({
       where: { userId: user.id },
-      create: {
-        userId: user.id,
-        question1: data.selfRating.question1,
-        question2: data.selfRating.question2,
-        question3: data.selfRating.question3,
-        question4: data.selfRating.question4,
-        question5: data.selfRating.question5,
-        question6: data.selfRating.question6,
-        question7: data.selfRating.question7,
-        question8: data.selfRating.question8,
-      },
-      update: {
-        question1: data.selfRating.question1,
-        question2: data.selfRating.question2,
-        question3: data.selfRating.question3,
-        question4: data.selfRating.question4,
-        question5: data.selfRating.question5,
-        question6: data.selfRating.question6,
-        question7: data.selfRating.question7,
-        question8: data.selfRating.question8,
-      },
+      create: { userId: user.id, ...selfRatingData },
+      update: selfRatingData,
     });
 
     revalidatePath('/');
