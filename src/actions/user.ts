@@ -57,7 +57,42 @@ export async function createUserProfile(data: {
   try {
     const user = await prisma.user.upsert({
       where: { clerkId: userId },
-      update: {}, // User already exists (e.g. re-sign-in); do nothing
+      update: {
+        profileCompleted: true,
+        name: data.name,
+        sex: data.sex,
+        location: data.location,
+        preferredGameType: data.preferredGameType,
+        organizationId: data.organizationId,
+        ratingMu: initialRating.mu,
+        ratingPhi: initialRating.phi,
+        ratingSigma: initialRating.sigma,
+        rating: Math.round(initialRating.mu),
+        selfRating: {
+          upsert: {
+            create: {
+              question1: data.selfRating.question1,
+              question2: data.selfRating.question2,
+              question3: data.selfRating.question3,
+              question4: data.selfRating.question4,
+              question5: data.selfRating.question5,
+              question6: data.selfRating.question6,
+              question7: data.selfRating.question7,
+              question8: data.selfRating.question8,
+            },
+            update: {
+              question1: data.selfRating.question1,
+              question2: data.selfRating.question2,
+              question3: data.selfRating.question3,
+              question4: data.selfRating.question4,
+              question5: data.selfRating.question5,
+              question6: data.selfRating.question6,
+              question7: data.selfRating.question7,
+              question8: data.selfRating.question8,
+            },
+          },
+        },
+      },
       create: {
         clerkId: userId,
         email: data.email,

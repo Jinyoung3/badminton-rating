@@ -12,15 +12,6 @@ export default async function BypassPage() {
       redirect('/sign-in');
     }
     
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-    });
-    
-    if (existingUser) {
-      redirect('/dashboard');
-    }
-    
     // Create a default organization if none exists
     let defaultOrg = await prisma.organization.findFirst({
       where: { name: 'Default Organization' },
@@ -48,8 +39,10 @@ export default async function BypassPage() {
       question8: 5,
     });
     
-    await prisma.user.create({
-      data: {
+    await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {},
+      create: {
         clerkId: userId,
         email: clerkUser.emailAddresses[0]?.emailAddress ?? 'test@example.com',
         name: clerkUser.firstName ?? 'Test User',
@@ -57,7 +50,6 @@ export default async function BypassPage() {
         location: 'Test City',
         preferredGameType: 'Singles',
         organizationId: defaultOrg.id,
-        // FIX: Map individual rating components and round mu for the display rating
         ratingMu: initialRating.mu,
         ratingPhi: initialRating.phi,
         ratingSigma: initialRating.sigma,
