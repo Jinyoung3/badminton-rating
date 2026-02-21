@@ -87,7 +87,7 @@ export default function CompleteProfileForm({ email }: CompleteProfileFormProps)
     if (result.success) {
       router.push('/dashboard');
     } else {
-      alert('Failed to create profile. Please try again.');
+      alert(result.error || 'Failed to create profile. Please try again.');
       setIsSubmitting(false);
     }
   };

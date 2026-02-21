@@ -53,7 +53,13 @@ export async function createUserProfile(data: {
   }
   
   const initialRating = calculateInitialRating(data.selfRating);
-  const organizationId = data.organizationId?.trim() || null;
+  let organizationId: string | null = data.organizationId?.trim() || null;
+
+  // Ensure organization exists when provided (avoids foreign key errors)
+  if (organizationId) {
+    const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) organizationId = null;
+  }
 
   try {
     const user = await prisma.user.upsert({
@@ -132,7 +138,8 @@ export async function createUserProfile(data: {
     return { success: true, user };
   } catch (error) {
     console.error('Error creating user profile:', error);
-    return { success: false, error: 'Failed to create profile' };
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message };
   }
 }
 
