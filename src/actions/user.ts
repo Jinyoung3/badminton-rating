@@ -139,6 +139,10 @@ export async function createUserProfile(data: {
       }
     }
 
+    if (!user) {
+      throw new Error('User not found after create/update');
+    }
+
     // Upsert SelfRating (create or update)
     await prisma.selfRating.upsert({
       where: { userId: user.id },
