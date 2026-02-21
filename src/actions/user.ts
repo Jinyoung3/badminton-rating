@@ -53,7 +53,8 @@ export async function createUserProfile(data: {
   }
   
   const initialRating = calculateInitialRating(data.selfRating);
-  
+  const organizationId = data.organizationId?.trim() || null;
+
   try {
     const user = await prisma.user.upsert({
       where: { clerkId: userId },
@@ -63,35 +64,11 @@ export async function createUserProfile(data: {
         sex: data.sex,
         location: data.location,
         preferredGameType: data.preferredGameType,
-        organizationId: data.organizationId,
+        organizationId,
         ratingMu: initialRating.mu,
         ratingPhi: initialRating.phi,
         ratingSigma: initialRating.sigma,
         rating: Math.round(initialRating.mu),
-        selfRating: {
-          upsert: {
-            create: {
-              question1: data.selfRating.question1,
-              question2: data.selfRating.question2,
-              question3: data.selfRating.question3,
-              question4: data.selfRating.question4,
-              question5: data.selfRating.question5,
-              question6: data.selfRating.question6,
-              question7: data.selfRating.question7,
-              question8: data.selfRating.question8,
-            },
-            update: {
-              question1: data.selfRating.question1,
-              question2: data.selfRating.question2,
-              question3: data.selfRating.question3,
-              question4: data.selfRating.question4,
-              question5: data.selfRating.question5,
-              question6: data.selfRating.question6,
-              question7: data.selfRating.question7,
-              question8: data.selfRating.question8,
-            },
-          },
-        },
       },
       create: {
         clerkId: userId,
@@ -100,7 +77,7 @@ export async function createUserProfile(data: {
         sex: data.sex,
         location: data.location,
         preferredGameType: data.preferredGameType,
-        organizationId: data.organizationId,
+        organizationId,
         ratingMu: initialRating.mu,
         ratingPhi: initialRating.phi,
         ratingSigma: initialRating.sigma,
@@ -124,7 +101,33 @@ export async function createUserProfile(data: {
         selfRating: true,
       },
     });
-    
+
+    // Upsert SelfRating in a separate call (nested 1:1 upsert can be unreliable in Prisma)
+    await prisma.selfRating.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        question1: data.selfRating.question1,
+        question2: data.selfRating.question2,
+        question3: data.selfRating.question3,
+        question4: data.selfRating.question4,
+        question5: data.selfRating.question5,
+        question6: data.selfRating.question6,
+        question7: data.selfRating.question7,
+        question8: data.selfRating.question8,
+      },
+      update: {
+        question1: data.selfRating.question1,
+        question2: data.selfRating.question2,
+        question3: data.selfRating.question3,
+        question4: data.selfRating.question4,
+        question5: data.selfRating.question5,
+        question6: data.selfRating.question6,
+        question7: data.selfRating.question7,
+        question8: data.selfRating.question8,
+      },
+    });
+
     revalidatePath('/');
     return { success: true, user };
   } catch (error) {
