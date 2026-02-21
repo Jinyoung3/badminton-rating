@@ -55,8 +55,10 @@ export async function createUserProfile(data: {
   const initialRating = calculateInitialRating(data.selfRating);
   
   try {
-    const user = await prisma.user.create({
-      data: {
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {}, // User already exists (e.g. re-sign-in); do nothing
+      create: {
         clerkId: userId,
         email: data.email,
         name: data.name,
