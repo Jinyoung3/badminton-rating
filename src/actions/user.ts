@@ -259,6 +259,8 @@ export async function switchOrganization(organizationId: string) {
     });
     
     revalidatePath('/');
+    revalidatePath('/dashboard');
+    revalidatePath('/organization');
     return { success: true };
   } catch (error) {
     console.error('Error switching organization:', error);
