@@ -12,12 +12,19 @@ export default async function DashboardPage() {
     return null;
   }
 
+  const totalMatches =
+    ((user as any).winCountSingles ?? 0) +
+    ((user as any).lossCountSingles ?? 0) +
+    ((user as any).winCountDoubles ?? 0) +
+    ((user as any).lossCountDoubles ?? 0);
+  const isNewUser = totalMatches === 0;
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg shadow-lg p-8 text-white">
         <h1 className="text-3xl font-bold mb-2">
-          Welcome back, {user.name}! 🏸
+          {isNewUser ? `Welcome, ${user.name}!` : `Welcome back, ${user.name}!`} 🏸
         </h1>
         <p className="text-primary-100 mb-4">
           {formatUserDisplayName(user.name, user.userNumber)} • {user.organization?.name}
