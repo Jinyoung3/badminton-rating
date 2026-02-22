@@ -8,24 +8,35 @@ datasource db {
 }
 
 model User {
-  id                      String                   @id @default(cuid())
-  clerkId                 String                   @unique
-  email                   String                   @unique
-  name                    String
-  userNumber              Int                      @unique @default(autoincrement())
-  sex                     String
-  location                String
-  preferredGameType       String
-  winCount                Int                      @default(0)
-  lossCount               Int                      @default(0)
-  rating                  Int                      @default(0)
-  organizationId          String?
-  profileCompleted        Boolean                  @default(false)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  ratingMu                Float                    @default(1500)
-  ratingPhi               Float                    @default(350)
-  ratingSigma             Float                    @default(0.06)
+  id                 String @id @default(cuid())
+  clerkId            String @unique
+  email              String @unique
+  name               String
+  userNumber         Int    @unique @default(autoincrement())
+  sex                String
+  location           String
+  preferredGameType  String
+  winCount           Int    @default(0)
+  lossCount          Int    @default(0)
+  rating             Int    @default(0) // Legacy/display; use ratingSingles/ratingDoubles
+  ratingMu           Float  @default(1500)
+  ratingPhi          Float  @default(350)
+  ratingSigma        Float  @default(0.06)
+  // Singles rating and record
+  ratingSingles      Int    @default(1500)
+  ratingMuSingles    Float  @default(1500)
+  ratingPhiSingles   Float  @default(350)
+  ratingSigmaSingles Float  @default(0.06)
+  winCountSingles    Int    @default(0)
+  lossCountSingles   Int    @default(0)
+  // Doubles rating and record
+  ratingDoubles      Int    @default(1500)
+  ratingMuDoubles    Float  @default(1500)
+  ratingPhiDoubles   Float  @default(350)
+  ratingSigmaDoubles Float  @default(0.06)
+  winCountDoubles    Int    @default(0)
+  lossCountDoubles   Int    @default(0)
+
   createdEvents           Event[]                  @relation("EventCreator")
   eventParticipants       EventParticipant[]
   createdMatches          Match[]                  @relation("MatchCreator")
@@ -35,6 +46,7 @@ model User {
   matchesAsPlayer4        Match[]                  @relation("Player4")
   scoreCorrectionRequests ScoreCorrectionRequest[]
   selfRating              SelfRating?
+  organizationId          String?
   organization            Organization?            @relation(fields: [organizationId], references: [id])
 }
 
