@@ -8,6 +8,7 @@ import RecordEventMatchButton from '@/components/RecordEventMatchButton';
 import Link from 'next/link';
 import CorrectionRequestCard from '@/components/CorrectionRequestCard';
 import { getEventCorrectionRequests } from '@/actions/corrections';
+import MatchCard from '@/components/MatchCard';
 
 interface EventDetailPageProps {
   params: {
@@ -180,12 +181,16 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       </div>
       
       {/* Matches */}
-      {event._count.matches > 0 && (
+      {event.matches.length > 0 && (
         <div className="card">
           <h2 className="text-2xl font-bold mb-4">
-            Matches ({event._count.matches})
+            Matches ({event.matches.length})
           </h2>
-          <p className="text-gray-600">Viewing match history coming in Phase 5...</p>
+          <div className="space-y-3">
+            {event.matches.map((match) => (
+              <MatchCard key={match.id} match={match} userId={user.id} />
+            ))}
+          </div>
         </div>
       )}
       {/* Correction Requests Section */}

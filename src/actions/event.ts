@@ -113,6 +113,23 @@ export async function getEventById(eventId: string) {
             joinedAt: 'asc',
           },
         },
+        matches: {
+          include: {
+            player1: true,
+            player2: true,
+            player3: true,
+            player4: true,
+            event: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            matchDate: 'desc',
+          },
+        },
         _count: {
           select: { participants: true, matches: true },
         },
