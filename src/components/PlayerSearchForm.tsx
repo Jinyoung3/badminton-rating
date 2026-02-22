@@ -108,7 +108,7 @@ export default function PlayerSearchForm({ initialParams }: PlayerSearchFormProp
             onChange={(e) => setMinRating(e.target.value)}
             placeholder="0"
             min="0"
-            max="9000"
+            max="3000"
             className="input-field"
           />
         </div>
@@ -122,9 +122,9 @@ export default function PlayerSearchForm({ initialParams }: PlayerSearchFormProp
             type="number"
             value={maxRating}
             onChange={(e) => setMaxRating(e.target.value)}
-            placeholder="9000"
+            placeholder="3000"
             min="0"
-            max="9000"
+            max="3000"
             className="input-field"
           />
         </div>
