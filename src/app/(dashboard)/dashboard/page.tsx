@@ -76,6 +76,15 @@ export default async function DashboardPage() {
         </Link>
         
         <Link
+          href="/organization/create"
+          className="card hover:shadow-md transition-shadow cursor-pointer group"
+        >
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🏢</div>
+          <h3 className="font-semibold text-lg mb-1">Create Organization</h3>
+          <p className="text-sm text-gray-600">Add a club or college</p>
+        </Link>
+        
+        <Link
           href="/player"
           className="card hover:shadow-md transition-shadow cursor-pointer group"
         >
