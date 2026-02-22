@@ -70,15 +70,9 @@ export default async function ProfilePage() {
       {/* Rating Card */}
       <div className="card">
         <h2 className="text-2xl font-bold mb-4">Current Rating</h2>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-5xl font-bold text-primary-600">{user.rating}</div>
-            <div className="text-sm text-gray-500 mt-1">Current Rating</div>
-          </div>
-          <Link href="/profile/edit#self-rating" className="btn-secondary">
-            Update Self-Rating
-          </Link>
+        <div>
+          <div className="text-5xl font-bold text-primary-600">{user.rating}</div>
+          <div className="text-sm text-gray-500 mt-1">Current Rating</div>
         </div>
       </div>
 

@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateProfile, updateSelfRating } from '@/actions/user';
-import { getAllOrganizations } from '@/actions/organization';
-import SelfRatingSlider from './SelfRatingSlider';
+import { updateProfile } from '@/actions/user';
 
 interface EditProfileFormProps {
   user: {
@@ -27,51 +25,19 @@ interface EditProfileFormProps {
   };
 }
 
-const QUESTIONS = [
-  'How comfortable are you with basic grip and footwork?',
-  'Can you rally consistently without mistakes?',
-  'How well do you control shot placement?',
-  'How strong and consistent is your overhead technique?',
-  'How well do you move and recover on court?',
-  'How do you handle match situations and strategy?',
-  'How experienced are you with competitive play?',
-  'Can you teach or analyze badminton technique?',
-];
-
 export default function EditProfileForm({ user }: EditProfileFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Basic info
+
   const [name, setName] = useState(user.name);
   const [location, setLocation] = useState(user.location);
   const [sex, setSex] = useState(user.sex);
   const [preferredGameType, setPreferredGameType] = useState(user.preferredGameType);
-  
-  // Self-rating
-  const [selfRating, setSelfRating] = useState(user.selfRating || {
-    question1: 5,
-    question2: 5,
-    question3: 5,
-    question4: 5,
-    question5: 5,
-    question6: 5,
-    question7: 5,
-    question8: 5,
-  });
-
-  const updateSelfRatingValue = (questionNum: number, value: number) => {
-    setSelfRating({
-      ...selfRating,
-      [`question${questionNum}`]: value,
-    });
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Update basic profile
     const profileResult = await updateProfile({
       name,
       location,
@@ -79,10 +45,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       preferredGameType,
     });
 
-    // Update self-rating
-    const ratingResult = await updateSelfRating(selfRating as any);
-
-    if (profileResult.success && ratingResult.success) {
+    if (profileResult.success) {
       router.push('/profile');
       router.refresh();
     } else {
@@ -154,25 +117,6 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
               <option value="Doubles">Doubles</option>
             </select>
           </div>
-        </div>
-      </div>
-
-      {/* Self-Rating */}
-      <div className="card" id="self-rating">
-        <h2 className="text-xl font-bold mb-2">Update Self-Rating</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          Updating your self-rating will recalculate your rating based on your current assessment.
-        </p>
-        
-        <div className="space-y-6">
-          {QUESTIONS.map((question, index) => (
-            <SelfRatingSlider
-              key={index}
-              question={`${index + 1}. ${question}`}
-              value={selfRating[`question${index + 1}` as keyof typeof selfRating]}
-              onChange={(value) => updateSelfRatingValue(index + 1, value)}
-            />
-          ))}
         </div>
       </div>
 
