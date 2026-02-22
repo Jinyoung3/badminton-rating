@@ -2,6 +2,8 @@ import { searchPlayers } from '@/actions/player';
 import PlayerSearchForm from '@/components/PlayerSearchForm';
 import PlayerCard from '@/components/PlayerCard';
 
+export const dynamic = 'force-dynamic';
+
 interface PlayerPageProps {
   searchParams: {
     query?: string;
@@ -22,7 +24,12 @@ export default async function PlayerPage({ searchParams }: PlayerPageProps) {
     limit: 20,
   });
 
-  const hasFilters = Object.keys(searchParams).length > 0;
+  const hasFilters =
+    !!searchParams.query ||
+    !!searchParams.location ||
+    !!searchParams.minRating ||
+    !!searchParams.maxRating ||
+    !!searchParams.gameType;
 
   return (
     <div className="space-y-6">
@@ -33,42 +40,30 @@ export default async function PlayerPage({ searchParams }: PlayerPageProps) {
         </p>
       </div>
 
-      {/* Search Form */}
       <PlayerSearchForm initialParams={searchParams} />
 
-      {/* Results */}
       <div>
-        {hasFilters ? (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">
-                Search Results ({players.length})
-              </h2>
-            </div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">
+            {hasFilters ? `Search Results (${players.length})` : `Players (${players.length})`}
+          </h2>
+        </div>
 
-            {players.length === 0 ? (
-              <div className="card text-center py-12">
-                <p className="text-4xl mb-2">😕</p>
-                <p className="text-gray-600">No players found</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Try adjusting your search filters
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {players.map((player) => (
-                  <PlayerCard key={player.id} player={player} />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
+        {players.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-4xl mb-2">👋</p>
-            <p className="text-gray-600">Use the search above to find players</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Search by name, location, rating range, or game type
+            <p className="text-4xl mb-2">😕</p>
+            <p className="text-gray-600">
+              {hasFilters ? 'No players found' : 'No players yet'}
             </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {hasFilters ? 'Try adjusting your search filters' : 'Complete your profile to appear here'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {players.map((player) => (
+              <PlayerCard key={player.id} player={player} />
+            ))}
           </div>
         )}
       </div>
