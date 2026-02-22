@@ -46,10 +46,12 @@ interface MatchCardProps {
 }
 
 export default function MatchCard({ match, userId }: MatchCardProps) {
-  // Determine if current user won
+  // Determine if current user won (singles: team1 = player1, team2 = player2; doubles: team1 = p1+p2, team2 = p3+p4)
   let userWon: boolean | null = null;
   if (userId) {
-    const isTeam1 = match.player1.id === userId || match.player2?.id === userId;
+    const isTeam1 = match.gameType === 'singles'
+      ? match.player1.id === userId
+      : (match.player1.id === userId || match.player2?.id === userId);
     userWon = (isTeam1 && match.winner === 'team1') || (!isTeam1 && match.winner === 'team2');
   }
 
