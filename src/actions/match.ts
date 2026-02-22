@@ -189,20 +189,22 @@ export async function recordEventMatch(data: {
 }
 
 /**
- * Internal helper to apply rating updates to the database
+ * Internal helper to apply rating updates to the database.
+ * Singles: team1 = player1, team2 = player2. Doubles: team1 = player1+player2, team2 = player3+player4.
  */
 async function updateMatchRatings(tx: any, data: any, changes: any, winner: string) {
-  const playersToUpdate = [
-    { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' },
-    { id: data.player2Id, rating: changes.player2NewRating, team: 'team1' },
-  ];
-
-  if (data.gameType === 'doubles') {
-    playersToUpdate.push(
-      { id: data.player3Id, rating: (changes as any).player3NewRating, team: 'team2' },
-      { id: data.player4Id, rating: (changes as any).player4NewRating, team: 'team2' }
-    );
-  }
+  const playersToUpdate =
+    data.gameType === 'singles'
+      ? [
+          { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
+          { id: data.player2Id, rating: changes.player2NewRating, team: 'team2' as const },
+        ]
+      : [
+          { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
+          { id: data.player2Id, rating: changes.player2NewRating, team: 'team1' as const },
+          { id: data.player3Id, rating: (changes as any).player3NewRating, team: 'team2' as const },
+          { id: data.player4Id, rating: (changes as any).player4NewRating, team: 'team2' as const },
+        ];
 
   for (const p of playersToUpdate) {
     await tx.user.update({
