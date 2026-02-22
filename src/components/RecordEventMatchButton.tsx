@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { recordEventMatch } from '@/actions/match';
 import { formatUserDisplayName } from '@/lib/utils';
+import { validateMatchGames } from '@/lib/badminton-score';
 
 interface User {
   id: string;
@@ -115,6 +116,12 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
       alert('Cannot select the same player multiple times');
       return;
     }
+
+    const gameError = validateMatchGames(games);
+    if (gameError) {
+      alert(gameError);
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -198,7 +205,9 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-lg p-6 max-w-3xl w-full my-8">
         <h2 className="text-2xl font-bold mb-4">Record Event Match</h2>
-        
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 mb-4">
+          Only players in the match can record it!
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Game Type */}
           <div>
@@ -314,7 +323,7 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
           
           {/* Game Scores */}
           <div>
-            <div className="flex justify-between items-center mb-3">
+            <div className="flex justify-between items-center mb-2">
               <h3 className="text-sm font-medium text-gray-700">Game Scores</h3>
               <button
                 type="button"
@@ -324,7 +333,9 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
                 + Add Game
               </button>
             </div>
-            
+            <p className="text-xs text-gray-500 mb-2">
+              First to 21 (win by 2). At 20-20, play until 2-point lead. At 29-29, next point wins (30-29).
+            </p>
             <div className="space-y-2">
               {games.map((game, index) => (
                 <div key={index} className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { recordChallengeMatch } from '@/actions/match';
 import { formatUserDisplayName } from '@/lib/utils';
+import { validateMatchGames } from '@/lib/badminton-score';
 
 interface User {
   id: string;
@@ -106,6 +107,12 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       alert('Cannot select the same player multiple times');
       return;
     }
+
+    const gameError = validateMatchGames(games);
+    if (gameError) {
+      alert(gameError);
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -148,6 +155,9 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
   
   return (
     <form onSubmit={handleSubmit} className="card space-y-6">
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        Only players in the match can record it!
+      </div>
       {/* Game Type Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -284,7 +294,7 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       
       {/* Game Scores */}
       <div>
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-semibold">Game Scores</h3>
           <button
             type="button"
@@ -294,7 +304,9 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
             + Add Game
           </button>
         </div>
-        
+        <p className="text-xs text-gray-500 mb-3">
+          First to 21 (win by 2). At 20-20, play until a 2-point lead. At 29-29, next point wins (30-29).
+        </p>
         <div className="space-y-3">
           {games.map((game, index) => (
             <div key={index} className="flex items-center gap-3">
@@ -345,22 +357,6 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
             </div>
           ))}
         </div>
-        
-        {/* Match Summary */}
-        {games.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="text-sm font-medium text-gray-700 mb-2">Match Summary</div>
-            <div className="text-lg font-bold text-primary-600">
-              {calculateWinner() === 'team1' 
-                ? `${getTeamLabel(1)} wins the match!`
-                : `${getTeamLabel(2)} wins the match!`
-              }
-            </div>
-            <div className="text-sm text-gray-600 mt-1">
-              {games.filter(g => g.team1 > g.team2).length} - {games.filter(g => g.team2 > g.team1).length}
-            </div>
-          </div>
-        )}
       </div>
       
       {/* Submit */}

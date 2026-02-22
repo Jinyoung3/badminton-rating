@@ -8,6 +8,7 @@ import {
   RATING_CONSTANTS 
 } from '@/lib/rating/calculator';
 import { determineMatchWinner } from '@/lib/utils';
+import { validateMatchGames } from '@/lib/badminton-score';
 import { revalidatePath } from 'next/cache';
 
 interface GameScore {
@@ -86,13 +87,16 @@ export async function recordChallengeMatch(data: {
   const user = await prisma.user.findUnique({ where: { clerkId } });
   if (!user) throw new Error('User not found');
 
+  const gameError = validateMatchGames(data.games);
+  if (gameError) return { success: false, error: gameError };
+
+  const playerIds = [data.player1Id, data.player2Id, data.player3Id, data.player4Id].filter(Boolean);
+  if (!playerIds.includes(user.id)) {
+    return { success: false, error: 'Only players in the match can record it!' };
+  }
+
   try {
     const { winner, ratingChanges } = await processMatchData(data);
-    
-    const playerIds = [data.player1Id, data.player2Id, data.player3Id, data.player4Id].filter(Boolean);
-    if (!playerIds.includes(user.id)) {
-      return { success: false, error: 'You must be a participant to record this match.' };
-    }
 
     // Normal matches always update; practice matches depend on constants
     const shouldUpdate = !data.isPractice || RATING_CONSTANTS.PRACTICE_AFFECTS_RATING;
@@ -148,6 +152,9 @@ export async function recordEventMatch(data: {
   if (!user || !event || event.creatorId !== user.id) {
     return { success: false, error: 'Only event creator can record matches' };
   }
+
+  const gameError = validateMatchGames(data.games);
+  if (gameError) return { success: false, error: gameError };
 
   try {
     const { winner, ratingChanges } = await processMatchData(data);
