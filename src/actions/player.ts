@@ -28,7 +28,7 @@ export async function searchPlayers(params: {
   try {
     const players = await prisma.user.findMany({
       where: {
-        selfRating: { isNot: null },
+        profileCompleted: true,
         ...(query && {
           name: {
             contains: query,

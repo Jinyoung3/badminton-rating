@@ -37,6 +37,8 @@ model User {
   winCountDoubles    Int    @default(0)
   lossCountDoubles   Int    @default(0)
 
+  profileCompleted   Boolean @default(false)
+
   createdEvents           Event[]                  @relation("EventCreator")
   eventParticipants       EventParticipant[]
   createdMatches          Match[]                  @relation("MatchCreator")
