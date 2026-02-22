@@ -60,6 +60,11 @@ export default function MatchCard({ match, userId }: MatchCardProps) {
   const team1Games = games.filter(g => g.team1 > g.team2).length;
   const team2Games = games.filter(g => g.team2 > g.team1).length;
 
+  const getPlayerRating = (player: { rating: number; ratingSingles?: number; ratingDoubles?: number }) =>
+    match.gameType === 'singles'
+      ? ((player as any).ratingSingles ?? player.rating)
+      : ((player as any).ratingDoubles ?? player.rating);
+
   // Get badge colors
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -109,8 +114,8 @@ export default function MatchCard({ match, userId }: MatchCardProps) {
                 )}
               </div>
               <div className="text-xs text-gray-600">
-                Rating: {match.player1.rating}
-                {match.player2 && match.gameType === 'doubles' && ` / ${match.player2.rating}`}
+                Rating: {getPlayerRating(match.player1)}
+                {match.player2 && match.gameType === 'doubles' && ` / ${getPlayerRating(match.player2)}`}
               </div>
             </div>
             <div className="text-xl font-bold">
@@ -132,10 +137,10 @@ export default function MatchCard({ match, userId }: MatchCardProps) {
                 }
               </div>
               <div className="text-xs text-gray-600">
-                Rating: {match.gameType === 'singles' 
-                  ? match.player2.rating 
-                  : match.player3 && match.player4 
-                    ? `${match.player3.rating} / ${match.player4.rating}`
+                Rating: {match.gameType === 'singles'
+                  ? getPlayerRating(match.player2)
+                  : match.player3 && match.player4
+                    ? `${getPlayerRating(match.player3)} / ${getPlayerRating(match.player4)}`
                     : 'N/A'
                 }
               </div>

@@ -69,10 +69,22 @@ export default async function ProfilePage() {
 
       {/* Rating Card */}
       <div className="card">
-        <h2 className="text-2xl font-bold mb-4">Current Rating</h2>
-        <div>
-          <div className="text-5xl font-bold text-primary-600">{user.rating}</div>
-          <div className="text-sm text-gray-500 mt-1">Current Rating</div>
+        <h2 className="text-2xl font-bold mb-4">Ratings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="text-4xl font-bold text-primary-600">{(user as any).ratingSingles ?? user.rating}</div>
+            <div className="text-sm text-gray-500 mt-1">Singles</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              {(user as any).winCountSingles ?? 0}W - {(user as any).lossCountSingles ?? 0}L
+            </div>
+          </div>
+          <div>
+            <div className="text-4xl font-bold text-primary-600">{(user as any).ratingDoubles ?? user.rating}</div>
+            <div className="text-sm text-gray-500 mt-1">Doubles</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              {(user as any).winCountDoubles ?? 0}W - {(user as any).lossCountDoubles ?? 0}L
+            </div>
+          </div>
         </div>
       </div>
 

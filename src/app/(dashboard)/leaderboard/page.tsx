@@ -93,17 +93,13 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 </div>
 
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-primary-600">
-                    {player.rating}
+                  <div className="text-sm font-bold text-primary-600">
+                    S: {(player as any).ratingSingles ?? player.rating} · D: {(player as any).ratingDoubles ?? player.rating}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {player.winCount}W - {player.lossCount}L
+                  <div className="text-xs text-gray-600">
+                    Singles {(player as any).winCountSingles ?? 0}W-{(player as any).lossCountSingles ?? 0}L
+                    {' · '}Doubles {(player as any).winCountDoubles ?? 0}W-{(player as any).lossCountDoubles ?? 0}L
                   </div>
-                  {(player.winCount + player.lossCount > 0) && (
-                    <div className="text-xs text-gray-500">
-                      {((player.winCount / (player.winCount + player.lossCount)) * 100).toFixed(1)}% WR
-                    </div>
-                  )}
                 </div>
               </div>
             ))}

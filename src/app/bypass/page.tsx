@@ -54,6 +54,14 @@ export default async function BypassPage() {
         ratingPhi: initialRating.phi,
         ratingSigma: initialRating.sigma,
         rating: Math.round(initialRating.mu),
+        ratingSingles: Math.round(initialRating.mu),
+        ratingMuSingles: initialRating.mu,
+        ratingPhiSingles: initialRating.phi,
+        ratingSigmaSingles: initialRating.sigma,
+        ratingDoubles: Math.round(initialRating.mu),
+        ratingMuDoubles: initialRating.mu,
+        ratingPhiDoubles: initialRating.phi,
+        ratingSigmaDoubles: initialRating.sigma,
         profileCompleted: true,
         selfRating: {
           create: {

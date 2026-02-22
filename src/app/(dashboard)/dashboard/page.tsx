@@ -22,26 +22,30 @@ export default async function DashboardPage() {
         <p className="text-primary-100 mb-4">
           {formatUserDisplayName(user.name, user.userNumber)} • {user.organization?.name}
         </p>
-        <div className="flex items-center space-x-8 mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
           <div>
-            <div className="text-4xl font-bold">{user.rating}</div>
-            <div className="text-sm text-primary-100">Current Rating</div>
-          </div>
-          <div>
-            <div className="text-4xl font-bold">{user.winCount}</div>
-            <div className="text-sm text-primary-100">Wins</div>
-          </div>
-          <div>
-            <div className="text-4xl font-bold">{user.lossCount}</div>
-            <div className="text-sm text-primary-100">Losses</div>
-          </div>
-          <div>
-            <div className="text-4xl font-bold">
-              {user.winCount + user.lossCount > 0 
-                ? ((user.winCount / (user.winCount + user.lossCount)) * 100).toFixed(1)
-                : '0.0'}%
+            <div className="text-3xl font-bold">{(user as any).ratingSingles ?? user.rating}</div>
+            <div className="text-sm text-primary-100">Singles Rating</div>
+            <div className="text-xs text-primary-200 mt-1">
+              {(user as any).winCountSingles ?? 0}W - {(user as any).lossCountSingles ?? 0}L
+              {((user as any).winCountSingles ?? 0) + ((user as any).lossCountSingles ?? 0) > 0 && (
+                <span className="ml-1">
+                  ({(((user as any).winCountSingles ?? 0) / (((user as any).winCountSingles ?? 0) + ((user as any).lossCountSingles ?? 0)) * 100).toFixed(0)}%)
+                </span>
+              )}
             </div>
-            <div className="text-sm text-primary-100">Win Rate</div>
+          </div>
+          <div>
+            <div className="text-3xl font-bold">{(user as any).ratingDoubles ?? user.rating}</div>
+            <div className="text-sm text-primary-100">Doubles Rating</div>
+            <div className="text-xs text-primary-200 mt-1">
+              {(user as any).winCountDoubles ?? 0}W - {(user as any).lossCountDoubles ?? 0}L
+              {((user as any).winCountDoubles ?? 0) + ((user as any).lossCountDoubles ?? 0) > 0 && (
+                <span className="ml-1">
+                  ({(((user as any).winCountDoubles ?? 0) / (((user as any).winCountDoubles ?? 0) + ((user as any).lossCountDoubles ?? 0)) * 100).toFixed(0)}%)
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

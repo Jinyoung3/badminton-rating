@@ -33,27 +33,37 @@ export default async function PlayerProfilePage({ params }: PlayerProfilePagePro
             )}
           </div>
           <div className="text-right">
-            <div className="text-4xl font-bold text-primary-600">{player.rating}</div>
-            <div className="text-sm text-gray-500">Rating</div>
+            <div className="text-sm text-gray-500">Singles / Doubles</div>
+            <div className="text-2xl font-bold text-primary-600">
+              {(player as any).ratingSingles ?? player.rating} / {(player as any).ratingDoubles ?? player.rating}
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{player.winCount}</div>
-            <div className="text-xs text-gray-600">Total Wins</div>
+            <div className="text-2xl font-bold text-gray-900">{(player as any).winCountSingles ?? player.winCount}</div>
+            <div className="text-xs text-gray-600">Singles Wins</div>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-gray-900">{player.lossCount}</div>
-            <div className="text-xs text-gray-600">Total Losses</div>
+            <div className="text-2xl font-bold text-gray-900">{(player as any).lossCountSingles ?? player.lossCount}</div>
+            <div className="text-xs text-gray-600">Singles Losses</div>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">{(player as any).winCountDoubles ?? 0}</div>
+            <div className="text-xs text-gray-600">Doubles Wins</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">{(player as any).lossCountDoubles ?? 0}</div>
+            <div className="text-xs text-gray-600">Doubles Losses</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg col-span-2 md:col-span-4">
             <div className="text-2xl font-bold text-gray-900">
-              {player.winCount + player.lossCount > 0
-                ? ((player.winCount / (player.winCount + player.lossCount)) * 100).toFixed(1)
+              {((player as any).winCountSingles ?? 0) + ((player as any).lossCountSingles ?? 0) + ((player as any).winCountDoubles ?? 0) + ((player as any).lossCountDoubles ?? 0) > 0
+                ? ((((player as any).winCountSingles ?? 0) + ((player as any).winCountDoubles ?? 0)) / (((player as any).winCountSingles ?? 0) + ((player as any).lossCountSingles ?? 0) + ((player as any).winCountDoubles ?? 0) + ((player as any).lossCountDoubles ?? 0)) * 100).toFixed(1)
                 : '0.0'}%
             </div>
-            <div className="text-xs text-gray-600">Win Rate</div>
+            <div className="text-xs text-gray-600">Overall Win Rate</div>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
             <div className="text-2xl font-bold text-gray-900">{stats.totalMatches}</div>

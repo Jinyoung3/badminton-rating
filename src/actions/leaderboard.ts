@@ -12,7 +12,7 @@ export async function getOrganizationLeaderboard(organizationId: string) {
         organizationId,
       },
       orderBy: {
-        rating: 'desc',
+        ratingSingles: 'desc',
       },
       include: {
         organization: true,
@@ -33,7 +33,7 @@ export async function getGlobalLeaderboard() {
   try {
     const users = await prisma.user.findMany({
       orderBy: {
-        rating: 'desc',
+        ratingSingles: 'desc',
       },
       include: {
         organization: true,

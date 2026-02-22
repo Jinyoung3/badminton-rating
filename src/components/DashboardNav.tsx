@@ -70,8 +70,9 @@ export default function DashboardNav({ user, notifications }: DashboardNavProps)
                 {formatUserDisplayName(user.name, user.userNumber)}
               </div>
               <div className="text-xs text-gray-500">
-                Rating: <span className="font-semibold text-primary-600">{user.rating}</span>
-                {user.organization && ` • ${user.organization.name}`}
+                S: <span className="font-semibold text-primary-600">{(user as any).ratingSingles ?? user.rating}</span>
+                {' · '}D: <span className="font-semibold text-primary-600">{(user as any).ratingDoubles ?? user.rating}</span>
+                {user.organization && ` · ${user.organization.name}`}
               </div>
             </div>
             <NotificationDropdown items={notifications} />

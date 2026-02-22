@@ -47,10 +47,14 @@ async function processMatchData(data: {
   });
 
   const playerMap = new Map(players.map(p => [p.id, p]));
+  const isSingles = data.gameType === 'singles';
   const getRating = (id: string) => {
     const p = playerMap.get(id);
     if (!p) throw new Error(`Player ${id} not found`);
-    return { mu: p.ratingMu, phi: p.ratingPhi, sigma: p.ratingSigma };
+    const mu = isSingles ? (p as any).ratingMuSingles : (p as any).ratingMuDoubles;
+    const phi = isSingles ? (p as any).ratingPhiSingles : (p as any).ratingPhiDoubles;
+    const sigma = isSingles ? (p as any).ratingSigmaSingles : (p as any).ratingSigmaDoubles;
+    return { mu: mu ?? p.ratingMu, phi: phi ?? p.ratingPhi, sigma: sigma ?? p.ratingSigma };
   };
 
   const winner = determineMatchWinner(data.games);
@@ -191,8 +195,10 @@ export async function recordEventMatch(data: {
 /**
  * Internal helper to apply rating updates to the database.
  * Singles: team1 = player1, team2 = player2. Doubles: team1 = player1+player2, team2 = player3+player4.
+ * Updates the appropriate rating set (singles or doubles) and win/loss counts.
  */
 async function updateMatchRatings(tx: any, data: any, changes: any, winner: string) {
+  const isSingles = data.gameType === 'singles';
   const playersToUpdate =
     data.gameType === 'singles'
       ? [
@@ -207,16 +213,33 @@ async function updateMatchRatings(tx: any, data: any, changes: any, winner: stri
         ];
 
   for (const p of playersToUpdate) {
+    const won = winner === p.team;
+    const baseData: any = {
+      ratingMu: p.rating.mu,
+      ratingPhi: p.rating.phi,
+      ratingSigma: p.rating.sigma,
+      rating: Math.round(p.rating.mu),
+      winCount: won ? { increment: 1 } : undefined,
+      lossCount: !won ? { increment: 1 } : undefined,
+    };
+    if (isSingles) {
+      baseData.ratingSingles = Math.round(p.rating.mu);
+      baseData.ratingMuSingles = p.rating.mu;
+      baseData.ratingPhiSingles = p.rating.phi;
+      baseData.ratingSigmaSingles = p.rating.sigma;
+      baseData.winCountSingles = won ? { increment: 1 } : undefined;
+      baseData.lossCountSingles = !won ? { increment: 1 } : undefined;
+    } else {
+      baseData.ratingDoubles = Math.round(p.rating.mu);
+      baseData.ratingMuDoubles = p.rating.mu;
+      baseData.ratingPhiDoubles = p.rating.phi;
+      baseData.ratingSigmaDoubles = p.rating.sigma;
+      baseData.winCountDoubles = won ? { increment: 1 } : undefined;
+      baseData.lossCountDoubles = !won ? { increment: 1 } : undefined;
+    }
     await tx.user.update({
       where: { id: p.id },
-      data: {
-        ratingMu: p.rating.mu,
-        ratingPhi: p.rating.phi,
-        ratingSigma: p.rating.sigma,
-        rating: Math.round(p.rating.mu),
-        winCount: winner === p.team ? { increment: 1 } : undefined,
-        lossCount: winner !== p.team ? { increment: 1 } : undefined,
-      },
+      data: baseData,
     });
   }
 }

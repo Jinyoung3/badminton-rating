@@ -72,6 +72,7 @@ export async function createUserProfile(data: {
     question8: data.selfRating.question8,
   };
 
+  const roundedRating = Math.round(initialRating.mu);
   const userUpdateData = {
     profileCompleted: true,
     name: data.name,
@@ -82,7 +83,15 @@ export async function createUserProfile(data: {
     ratingMu: initialRating.mu,
     ratingPhi: initialRating.phi,
     ratingSigma: initialRating.sigma,
-    rating: Math.round(initialRating.mu),
+    rating: roundedRating,
+    ratingSingles: roundedRating,
+    ratingMuSingles: initialRating.mu,
+    ratingPhiSingles: initialRating.phi,
+    ratingSigmaSingles: initialRating.sigma,
+    ratingDoubles: roundedRating,
+    ratingMuDoubles: initialRating.mu,
+    ratingPhiDoubles: initialRating.phi,
+    ratingSigmaDoubles: initialRating.sigma,
   };
 
   try {
@@ -125,7 +134,15 @@ export async function createUserProfile(data: {
             ratingMu: initialRating.mu,
             ratingPhi: initialRating.phi,
             ratingSigma: initialRating.sigma,
-            rating: Math.round(initialRating.mu),
+            rating: roundedRating,
+            ratingSingles: roundedRating,
+            ratingMuSingles: initialRating.mu,
+            ratingPhiSingles: initialRating.phi,
+            ratingSigmaSingles: initialRating.sigma,
+            ratingDoubles: roundedRating,
+            ratingMuDoubles: initialRating.mu,
+            ratingPhiDoubles: initialRating.phi,
+            ratingSigmaDoubles: initialRating.sigma,
             profileCompleted: true,
             selfRating: {
               create: selfRatingData,
