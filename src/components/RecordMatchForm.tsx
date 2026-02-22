@@ -130,7 +130,6 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       // Show rating changes if applicable
       if (result.ratingChanges && !isPractice) {
         const winner = calculateWinner();
-        // FIX: Cast to any to safely access player3/4 changes in the dynamic string
         const changes = result.ratingChanges as any;
         
         alert(
@@ -150,7 +149,10 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       }
       
       router.push('/dashboard');
+    } else {
+      alert(result.error || 'Failed to record match');
     }
+    setIsSubmitting(false);
   };
   
   return (
