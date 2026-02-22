@@ -183,47 +183,33 @@ export async function getMatchStatistics() {
       },
     });
 
-    // Calculate overall stats
-    const wins = allMatches.filter(m => {
-      const isTeam1 = m.player1Id === user.id || m.player2Id === user.id;
+    // Helper: did the current user win this match? (singles: team1=player1, team2=player2; doubles: team1=p1+p2, team2=p3+p4)
+    const userWon = (m: { gameType: string; player1Id: string; player2Id: string | null; winner: string }) => {
+      const isTeam1 = m.gameType === 'singles'
+        ? m.player1Id === user.id
+        : (m.player1Id === user.id || m.player2Id === user.id);
       return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-    }).length;
+    };
 
+    // Calculate overall stats
+    const wins = allMatches.filter(m => userWon(m)).length;
     const losses = allMatches.length - wins;
 
     // Calculate by game type
     const singlesMatches = allMatches.filter(m => m.gameType === 'singles');
     const doublesMatches = allMatches.filter(m => m.gameType === 'doubles');
 
-    const singlesWins = singlesMatches.filter(m => {
-      const isPlayer1 = m.player1Id === user.id;
-      return (isPlayer1 && m.winner === 'team1') || (!isPlayer1 && m.winner === 'team2');
-    }).length;
-
-    const doublesWins = doublesMatches.filter(m => {
-      const isTeam1 = m.player1Id === user.id || m.player2Id === user.id;
-      return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-    }).length;
+    const singlesWins = singlesMatches.filter(m => userWon(m)).length;
+    const doublesWins = doublesMatches.filter(m => userWon(m)).length;
 
     // Calculate by match type
     const eventMatches = allMatches.filter(m => m.type === 'event');
     const challengeMatches = allMatches.filter(m => m.type === 'challenge');
     const practiceMatches = allMatches.filter(m => m.type === 'practice');
 
-    const eventWins = eventMatches.filter(m => {
-      const isTeam1 = m.player1Id === user.id || m.player2Id === user.id;
-      return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-    }).length;
-
-    const challengeWins = challengeMatches.filter(m => {
-      const isTeam1 = m.player1Id === user.id || m.player2Id === user.id;
-      return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-    }).length;
-
-    const practiceWins = practiceMatches.filter(m => {
-      const isTeam1 = m.player1Id === user.id || m.player2Id === user.id;
-      return (isTeam1 && m.winner === 'team1') || (!isTeam1 && m.winner === 'team2');
-    }).length;
+    const eventWins = eventMatches.filter(m => userWon(m)).length;
+    const challengeWins = challengeMatches.filter(m => userWon(m)).length;
+    const practiceWins = practiceMatches.filter(m => userWon(m)).length;
 
     return {
       overall: {
