@@ -15,8 +15,8 @@ interface User {
 }
 
 interface GameScore {
-  team1: number;
-  team2: number;
+  team1: number | '';
+  team2: number | '';
 }
 
 interface RecordEventMatchButtonProps {
@@ -38,11 +38,11 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
   
   // Game scores
   const [games, setGames] = useState<GameScore[]>([
-    { team1: 21, team2: 19 }
+    { team1: '', team2: '' }
   ]);
   
   const addGame = () => {
-    setGames([...games, { team1: 21, team2: 19 }]);
+    setGames([...games, { team1: '', team2: '' }]);
   };
   
   const removeGame = (index: number) => {
@@ -52,9 +52,9 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
   };
   
   const updateGame = (index: number, team: 'team1' | 'team2', value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = value === '' ? '' : parseInt(value, 10);
     const newGames = [...games];
-    newGames[index][team] = numValue;
+    newGames[index][team] = Number.isNaN(numValue) ? '' : numValue;
     setGames(newGames);
   };
   
@@ -63,10 +63,12 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
     let team2Wins = 0;
     
     games.forEach(game => {
+      if (game.team1 === '' || game.team2 === '') return;
       if (game.team1 > game.team2) team1Wins++;
       else team2Wins++;
     });
     
+    if (team1Wins === 0 && team2Wins === 0) return null;
     return team1Wins > team2Wins ? 'team1' : 'team2';
   };
   
@@ -84,7 +86,7 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
     setPlayer2Id('');
     setPlayer3Id('');
     setPlayer4Id('');
-    setGames([{ team1: 21, team2: 19 }]);
+    setGames([{ team1: '', team2: '' }]);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,6 +107,11 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
       alert('Please add at least one game');
       return;
     }
+
+    if (games.some((game) => game.team1 === '' || game.team2 === '')) {
+      alert('Please enter scores for all games');
+      return;
+    }
     
     // Check for duplicate players
     const playerIds = [player1Id, player2Id];
@@ -117,7 +124,12 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
       return;
     }
 
-    const gameError = validateMatchGames(games);
+    const normalizedGames = games.map((game) => ({
+      team1: Number(game.team1),
+      team2: Number(game.team2),
+    }));
+
+    const gameError = validateMatchGames(normalizedGames);
     if (gameError) {
       alert(gameError);
       return;
@@ -132,7 +144,7 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
       player2Id,
       player3Id: gameType === 'doubles' ? player3Id : undefined,
       player4Id: gameType === 'doubles' ? player4Id : undefined,
-      games,
+      games: normalizedGames,
     });
     
     // if (result.success) {
@@ -378,7 +390,11 @@ export default function RecordEventMatchButton({ eventId, participants }: Record
             
             {games.length > 0 && (
               <div className="mt-3 text-sm text-gray-600">
-                Winner: {calculateWinner() === 'team1' ? getTeamLabel(1) : getTeamLabel(2)}
+                Winner: {calculateWinner() === null
+                  ? '-'
+                  : calculateWinner() === 'team1'
+                    ? getTeamLabel(1)
+                    : getTeamLabel(2)}
               </div>
             )}
           </div>

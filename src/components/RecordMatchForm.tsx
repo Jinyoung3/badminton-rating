@@ -16,8 +16,8 @@ interface User {
 }
 
 interface GameScore {
-  team1: number;
-  team2: number;
+  team1: number | '';
+  team2: number | '';
 }
 
 interface RecordMatchFormProps {
@@ -38,11 +38,11 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
   
   // Game scores
   const [games, setGames] = useState<GameScore[]>([
-    { team1: 21, team2: 19 }
+    { team1: '', team2: '' }
   ]);
   
   const addGame = () => {
-    setGames([...games, { team1: 21, team2: 19 }]);
+    setGames([...games, { team1: '', team2: '' }]);
   };
   
   const removeGame = (index: number) => {
@@ -52,9 +52,9 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
   };
   
   const updateGame = (index: number, team: 'team1' | 'team2', value: string) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = value === '' ? '' : parseInt(value, 10);
     const newGames = [...games];
-    newGames[index][team] = numValue;
+    newGames[index][team] = Number.isNaN(numValue) ? '' : numValue;
     setGames(newGames);
   };
   
@@ -63,10 +63,12 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
     let team2Wins = 0;
     
     games.forEach(game => {
+      if (game.team1 === '' || game.team2 === '') return;
       if (game.team1 > game.team2) team1Wins++;
       else team2Wins++;
     });
     
+    if (team1Wins === 0 && team2Wins === 0) return null;
     return team1Wins > team2Wins ? 'team1' : 'team2';
   };
   
@@ -96,6 +98,11 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       alert('Please add at least one game');
       return;
     }
+
+    if (games.some((game) => game.team1 === '' || game.team2 === '')) {
+      alert('Please enter scores for all games');
+      return;
+    }
     
     // Check for duplicate players
     const playerIds = [player1Id, player2Id];
@@ -108,7 +115,12 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       return;
     }
 
-    const gameError = validateMatchGames(games);
+    const normalizedGames = games.map((game) => ({
+      team1: Number(game.team1),
+      team2: Number(game.team2),
+    }));
+
+    const gameError = validateMatchGames(normalizedGames);
     if (gameError) {
       alert(gameError);
       return;
@@ -122,7 +134,7 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
       player2Id,
       player3Id: gameType === 'doubles' ? player3Id : undefined,
       player4Id: gameType === 'doubles' ? player4Id : undefined,
-      games,
+      games: normalizedGames,
       isPractice,
     });
     
@@ -351,10 +363,11 @@ export default function RecordMatchForm({ allUsers, isPractice }: RecordMatchFor
               )}
               
               <span className="text-sm text-gray-500 w-24 text-right">
-                {game.team1 > game.team2 
-                  ? `${getTeamLabel(1)} wins`
-                  : `${getTeamLabel(2)} wins`
-                }
+                {game.team1 === '' || game.team2 === ''
+                  ? '-'
+                  : game.team1 > game.team2
+                    ? `${getTeamLabel(1)} wins`
+                    : `${getTeamLabel(2)} wins`}
               </span>
             </div>
           ))}

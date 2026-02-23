@@ -105,6 +105,13 @@ export async function getMatchById(matchId: string) {
  * Get recent matches for a user (for dashboard)
  */
 export async function getRecentMatches(limit: number = 5) {
+  return getRecentMatchesPage(limit, 0);
+}
+
+/**
+ * Get recent matches for a user with offset pagination (for dashboard "view more")
+ */
+export async function getRecentMatchesPage(limit: number = 5, offset: number = 0) {
   const { userId } = await auth();
   
   if (!userId) {
@@ -140,6 +147,7 @@ export async function getRecentMatches(limit: number = 5) {
         matchDate: 'desc',
       },
       take: limit,
+      skip: offset,
     });
 
     return matches;
