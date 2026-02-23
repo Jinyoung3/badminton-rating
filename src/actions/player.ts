@@ -3,6 +3,74 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 
+async function hydratePlayersWithLiveRecord(players: any[]) {
+  if (players.length === 0) {
+    return players;
+  }
+
+  const playerIds = players.map((p) => p.id);
+  const matches = await prisma.match.findMany({
+    where: {
+      OR: [
+        { player1Id: { in: playerIds } },
+        { player2Id: { in: playerIds } },
+        { player3Id: { in: playerIds } },
+        { player4Id: { in: playerIds } },
+      ],
+    },
+    select: {
+      gameType: true,
+      winner: true,
+      player1Id: true,
+      player2Id: true,
+      player3Id: true,
+      player4Id: true,
+    },
+  });
+
+  const record = new Map<string, { winCount: number; lossCount: number }>();
+  for (const id of playerIds) {
+    record.set(id, { winCount: 0, lossCount: 0 });
+  }
+
+  for (const match of matches) {
+    if (match.gameType === 'singles') {
+      const p1 = record.get(match.player1Id);
+      const p2 = record.get(match.player2Id);
+      if (p1) {
+        if (match.winner === 'team1') p1.winCount += 1;
+        else p1.lossCount += 1;
+      }
+      if (p2) {
+        if (match.winner === 'team2') p2.winCount += 1;
+        else p2.lossCount += 1;
+      }
+      continue;
+    }
+
+    const team1 = [match.player1Id, match.player2Id].filter(Boolean) as string[];
+    const team2 = [match.player3Id, match.player4Id].filter(Boolean) as string[];
+
+    for (const id of team1) {
+      const s = record.get(id);
+      if (!s) continue;
+      if (match.winner === 'team1') s.winCount += 1;
+      else s.lossCount += 1;
+    }
+    for (const id of team2) {
+      const s = record.get(id);
+      if (!s) continue;
+      if (match.winner === 'team2') s.winCount += 1;
+      else s.lossCount += 1;
+    }
+  }
+
+  return players.map((player) => ({
+    ...player,
+    ...(record.get(player.id) ?? { winCount: 0, lossCount: 0 }),
+  }));
+}
+
 /**
  * Search players by name, location, or rating range
  */
@@ -67,7 +135,7 @@ export async function searchPlayers(params: {
       take: limit,
     });
 
-    return players;
+    return await hydratePlayersWithLiveRecord(players);
   } catch (error) {
     console.error('Error searching players:', error);
     return [];

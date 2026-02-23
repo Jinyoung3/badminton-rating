@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { formatUserDisplayName } from '@/lib/utils';
 
 interface Player {
@@ -28,7 +27,7 @@ export default function PlayerCard({ player }: PlayerCardProps) {
     : '0.0';
 
   return (
-    <Link href={`/player/${player.id}`} className="card hover:shadow-md transition-shadow cursor-pointer">
+    <div className="card">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="font-bold text-lg">
@@ -57,6 +56,6 @@ export default function PlayerCard({ player }: PlayerCardProps) {
           {winRate}% WR
         </span>
       </div>
-    </Link>
+    </div>
   );
 }
