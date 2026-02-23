@@ -135,15 +135,6 @@ export default function CreateEventForm({ organizationId, organizationName }: Cr
         </div>
       </div>
       
-      <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-        <p className="text-sm text-primary-900 font-medium mb-1">
-          📋 Event Code
-        </p>
-        <p className="text-sm text-primary-700">
-          A unique 4-digit code will be automatically generated for this event. Share it with participants to let them join!
-        </p>
-      </div>
-      
       <div className="flex gap-3 pt-4">
         <button
           type="button"
