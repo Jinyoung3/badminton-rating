@@ -1,6 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { calculateInitialRating, type SelfRatingAnswers } from '@/lib/rating/calculator';
 import { revalidatePath } from 'next/cache';
@@ -14,15 +15,50 @@ export async function getCurrentUser() {
   if (!userId) {
     return null;
   }
-  
-  const user = await prisma.user.findUnique({
+
+  const userInclude = {
+    organization: true,
+    selfRating: true,
+  } as const;
+
+  // Primary lookup: linked Clerk account id
+  let user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    include: {
-      organization: true,
-      selfRating: true,
-    },
+    include: userInclude,
   });
-  
+
+  if (user) {
+    return user;
+  }
+
+  // Fallback: account/provider switched, but profile already exists by email
+  const clerk = await currentUser();
+  const clerkEmail = clerk?.emailAddresses?.[0]?.emailAddress?.trim();
+  if (!clerkEmail) {
+    return null;
+  }
+
+  const existingByEmail = await prisma.user.findFirst({
+    where: {
+      email: {
+        equals: clerkEmail,
+        mode: 'insensitive',
+      },
+    },
+    include: userInclude,
+  });
+
+  if (!existingByEmail) {
+    return null;
+  }
+
+  // Keep the DB linked to the currently signed-in Clerk account
+  user = await prisma.user.update({
+    where: { id: existingByEmail.id },
+    data: { clerkId: userId, email: clerkEmail },
+    include: userInclude,
+  });
+
   return user;
 }
 
