@@ -6,6 +6,21 @@ import { prisma } from '@/lib/prisma';
 import { calculateInitialRating, type SelfRatingAnswers } from '@/lib/rating/calculator';
 import { revalidatePath } from 'next/cache';
 
+function getAdminEmailSet() {
+  const raw = `${process.env.ADMIN_EMAILS ?? ''},${process.env.ADMIN_EMAIL ?? ''}`;
+  return new Set(
+    raw
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function isAdminEmail(email?: string | null) {
+  if (!email) return false;
+  return getAdminEmailSet().has(email.trim().toLowerCase());
+}
+
 /**
  * Get current user's profile from database
  */
@@ -28,6 +43,20 @@ export async function getCurrentUser() {
   });
 
   if (user) {
+    let shouldBeAdmin = isAdminEmail(user.email);
+    if (!shouldBeAdmin && !user.isAdmin) {
+      const adminCount = await prisma.user.count({ where: { isAdmin: true } });
+      if (adminCount === 0) {
+        shouldBeAdmin = true;
+      }
+    }
+    if (user.isAdmin !== shouldBeAdmin) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { isAdmin: shouldBeAdmin },
+        include: userInclude,
+      });
+    }
     return user;
   }
 
@@ -53,11 +82,23 @@ export async function getCurrentUser() {
   }
 
   // Keep the DB linked to the currently signed-in Clerk account
+  const shouldBeAdminForLinkedUser = isAdminEmail(clerkEmail);
   user = await prisma.user.update({
     where: { id: existingByEmail.id },
-    data: { clerkId: userId, email: clerkEmail },
+    data: { clerkId: userId, email: clerkEmail, isAdmin: shouldBeAdminForLinkedUser },
     include: userInclude,
   });
+
+  if (!shouldBeAdminForLinkedUser && !user.isAdmin) {
+    const adminCount = await prisma.user.count({ where: { isAdmin: true } });
+    if (adminCount === 0) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { isAdmin: true },
+        include: userInclude,
+      });
+    }
+  }
 
   return user;
 }
@@ -111,6 +152,7 @@ export async function createUserProfile(data: {
   const roundedRating = Math.round(initialRating.mu);
   const userUpdateData = {
     profileCompleted: true,
+    isAdmin: isAdminEmail(data.email),
     name: data.name,
     sex: data.sex,
     location: data.location,
@@ -180,6 +222,7 @@ export async function createUserProfile(data: {
             ratingPhiDoubles: initialRating.phi,
             ratingSigmaDoubles: initialRating.sigma,
             profileCompleted: true,
+            isAdmin: isAdminEmail(data.email),
             selfRating: {
               create: selfRatingData,
             },

@@ -11,6 +11,7 @@ interface User {
   name: string;
   userNumber: number;
   rating: number;
+  isAdmin?: boolean;
   organization: {
     name: string;
   } | null;
@@ -32,6 +33,9 @@ const NAV_ITEMS = [
 
 export default function DashboardNav({ user, notifications }: DashboardNavProps) {
   const pathname = usePathname();
+  const navItems = user.isAdmin
+    ? [...NAV_ITEMS, { label: 'Admin', href: '/admin' }]
+    : NAV_ITEMS;
   
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -45,7 +49,7 @@ export default function DashboardNav({ user, notifications }: DashboardNavProps)
           
           {/* Navigation Links */}
           <div className="hidden md:flex items-center space-x-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -82,7 +86,7 @@ export default function DashboardNav({ user, notifications }: DashboardNavProps)
         
         {/* Mobile Navigation */}
         <div className="md:hidden flex overflow-x-auto space-x-1 pb-2">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
