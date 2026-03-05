@@ -43,19 +43,22 @@ export async function getCurrentUser() {
   });
 
   if (user) {
-    let shouldBeAdmin = isAdminEmail(user.email);
-    if (!shouldBeAdmin && !user.isAdmin) {
-      const adminCount = await prisma.user.count({ where: { isAdmin: true } });
-      if (adminCount === 0) {
-        shouldBeAdmin = true;
+    // Only promote to admin, never demote. Manual DB grants are preserved.
+    if (!user.isAdmin) {
+      let shouldPromote = isAdminEmail(user.email);
+      if (!shouldPromote) {
+        const adminCount = await prisma.user.count({ where: { isAdmin: true } });
+        if (adminCount === 0) {
+          shouldPromote = true;
+        }
       }
-    }
-    if (user.isAdmin !== shouldBeAdmin) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { isAdmin: shouldBeAdmin },
-        include: userInclude,
-      });
+      if (shouldPromote) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { isAdmin: true },
+          include: userInclude,
+        });
+      }
     }
     return user;
   }
@@ -82,14 +85,19 @@ export async function getCurrentUser() {
   }
 
   // Keep the DB linked to the currently signed-in Clerk account
-  const shouldBeAdminForLinkedUser = isAdminEmail(clerkEmail);
+  // Only promote to admin, never demote
+  const shouldPromoteLinked = !existingByEmail.isAdmin && isAdminEmail(clerkEmail);
   user = await prisma.user.update({
     where: { id: existingByEmail.id },
-    data: { clerkId: userId, email: clerkEmail, isAdmin: shouldBeAdminForLinkedUser },
+    data: {
+      clerkId: userId,
+      email: clerkEmail,
+      ...(shouldPromoteLinked && { isAdmin: true }),
+    },
     include: userInclude,
   });
 
-  if (!shouldBeAdminForLinkedUser && !user.isAdmin) {
+  if (!user.isAdmin) {
     const adminCount = await prisma.user.count({ where: { isAdmin: true } });
     if (adminCount === 0) {
       user = await prisma.user.update({

@@ -195,22 +195,85 @@ export async function approveCorrectionRequest(requestId: string) {
     }
 
     const proposedGames = request.proposedGames as GameScore[];
-    const winner = determineMatchWinner(proposedGames);
+    const newWinner = determineMatchWinner(proposedGames);
+    const oldWinner = request.match.winner;
+    const winnerChanged = newWinner !== oldWinner;
 
-    await prisma.$transaction([
-      prisma.match.update({
+    await prisma.$transaction(async (tx) => {
+      // Update match with corrected scores and winner
+      await tx.match.update({
         where: { id: request.matchId },
-        data: { games: proposedGames as object, winner },
-      }),
-      prisma.scoreCorrectionRequest.update({
+        data: { games: proposedGames as object, winner: newWinner },
+      });
+
+      // If the winner changed, reverse the old win/loss counts and apply new ones
+      if (winnerChanged) {
+        const isSingles = request.match.gameType === 'singles';
+        const allPlayerIds = [
+          request.match.player1Id,
+          request.match.player2Id,
+          ...(request.match.player3Id ? [request.match.player3Id] : []),
+          ...(request.match.player4Id ? [request.match.player4Id] : []),
+        ];
+
+        for (const playerId of allPlayerIds) {
+          const isTeam1 = isSingles
+            ? playerId === request.match.player1Id
+            : (playerId === request.match.player1Id || playerId === request.match.player2Id);
+          const oldWon = (isTeam1 && oldWinner === 'team1') || (!isTeam1 && oldWinner === 'team2');
+          const newWon = (isTeam1 && newWinner === 'team1') || (!isTeam1 && newWinner === 'team2');
+
+          // Only update if this player's win/loss status changed
+          if (oldWon !== newWon) {
+            const countUpdate: Record<string, unknown> = {};
+            if (oldWon) {
+              // Was a win, now a loss
+              countUpdate.winCount = { decrement: 1 };
+              countUpdate.lossCount = { increment: 1 };
+              if (isSingles) {
+                countUpdate.winCountSingles = { decrement: 1 };
+                countUpdate.lossCountSingles = { increment: 1 };
+              } else {
+                countUpdate.winCountDoubles = { decrement: 1 };
+                countUpdate.lossCountDoubles = { increment: 1 };
+              }
+            } else {
+              // Was a loss, now a win
+              countUpdate.winCount = { increment: 1 };
+              countUpdate.lossCount = { decrement: 1 };
+              if (isSingles) {
+                countUpdate.winCountSingles = { increment: 1 };
+                countUpdate.lossCountSingles = { decrement: 1 };
+              } else {
+                countUpdate.winCountDoubles = { increment: 1 };
+                countUpdate.lossCountDoubles = { decrement: 1 };
+              }
+            }
+
+            await tx.user.update({
+              where: { id: playerId },
+              data: countUpdate,
+            });
+          }
+        }
+      }
+
+      await tx.scoreCorrectionRequest.update({
         where: { id: requestId },
         data: { status: 'approved' },
-      }),
-    ]);
+      });
+    });
 
     revalidatePath(`/matches/${request.matchId}`);
     if (request.eventId) revalidatePath(`/event/${request.eventId}`);
-    return { success: true };
+    revalidatePath('/leaderboard');
+    revalidatePath('/dashboard');
+    return {
+      success: true,
+      warning: winnerChanged
+        ? 'Score and win/loss counts corrected. Note: Glicko-2 rating points were not recalculated — a full recalculation would require replaying all subsequent matches.'
+        : undefined,
+    };
   } catch (error) {
     console.error('Error approving correction request:', error);
     return { success: false, error: 'Failed to approve request' };
@@ -338,7 +401,7 @@ export async function getPendingCorrectionRequestsForRespondent() {
  */
 export async function getMyCorrectionRequests() {
   const { userId } = await auth();
-  
+
   if (!userId) {
     return [];
   }

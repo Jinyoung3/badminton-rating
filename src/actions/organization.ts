@@ -1,5 +1,6 @@
 'use server';
 
+import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
@@ -16,7 +17,7 @@ export async function getAllOrganizations() {
         },
       },
     });
-    
+
     return organizations;
   } catch (error) {
     console.error('Error fetching organizations:', error);
@@ -40,7 +41,7 @@ export async function getOrganizationById(id: string) {
         },
       },
     });
-    
+
     return organization;
   } catch (error) {
     console.error('Error fetching organization:', error);
@@ -56,6 +57,11 @@ export async function createOrganization(data: {
   type: 'Club' | 'College';
   location: string;
 }) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: 'Not authenticated' };
+  }
+
   try {
     const organization = await prisma.organization.create({
       data: {
@@ -64,7 +70,7 @@ export async function createOrganization(data: {
         location: data.location,
       },
     });
-    
+
     // Don't revalidate here - it causes the form to reset
     // The component will handle updating its local state
     return { success: true, organization };
@@ -81,7 +87,7 @@ export async function searchOrganizations(query: string) {
   if (!query || query.length < 2) {
     return [];
   }
-  
+
   try {
     const organizations = await prisma.organization.findMany({
       where: {
@@ -97,7 +103,7 @@ export async function searchOrganizations(query: string) {
         },
       },
     });
-    
+
     return organizations;
   } catch (error) {
     console.error('Error searching organizations:', error);

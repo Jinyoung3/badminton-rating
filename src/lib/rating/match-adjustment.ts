@@ -24,11 +24,15 @@ export function calculateSinglesRatingChanges(
   player1Change: number;
   player2Change: number;
 } {
-  const [newRating1, newRating2] = glicko.rate1v1(
-    player1Rating,
-    player2Rating,
-    false // not a draw
-  );
+  const p1Won = winner === 'team1';
+
+  const newRating1 = glicko.rate(player1Rating, [
+    { score: p1Won ? WIN : LOSS, opponentRating: player2Rating },
+  ]);
+
+  const newRating2 = glicko.rate(player2Rating, [
+    { score: p1Won ? LOSS : WIN, opponentRating: player1Rating },
+  ]);
 
   // For display purposes, calculate mu change
   const player1Change = Math.round(newRating1.mu - player1Rating.mu);

@@ -15,7 +15,7 @@ export function calculateGamesWonLost(
 ): { won: number; lost: number } {
   let won = 0;
   let lost = 0;
-  
+
   games.forEach((game) => {
     if (isTeam1) {
       if (game.team1 > game.team2) won++;
@@ -25,7 +25,7 @@ export function calculateGamesWonLost(
       else lost++;
     }
   });
-  
+
   return { won, lost };
 }
 
@@ -50,11 +50,15 @@ export function determineMatchWinner(
 ): 'team1' | 'team2' {
   let team1Games = 0;
   let team2Games = 0;
-  
+
   games.forEach((game) => {
     if (game.team1 > game.team2) team1Games++;
     else team2Games++;
   });
-  
+
+  if (team1Games === team2Games) {
+    throw new Error('Match cannot end in a tie — must have an odd number of games');
+  }
+
   return team1Games > team2Games ? 'team1' : 'team2';
 }

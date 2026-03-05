@@ -2,10 +2,10 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { 
-  calculateSinglesRatingChanges, 
+import {
+  calculateSinglesRatingChanges,
   calculateDoublesRatingChanges,
-  RATING_CONSTANTS 
+  RATING_CONSTANTS
 } from '@/lib/rating/calculator';
 import { determineMatchWinner } from '@/lib/utils';
 import { validateMatchGames } from '@/lib/badminton-score';
@@ -58,17 +58,17 @@ async function processMatchData(data: {
   };
 
   const winner = determineMatchWinner(data.games);
-  
+
   // Calculate rating changes based on game type
-  const ratingChanges = data.gameType === 'singles' 
+  const ratingChanges = data.gameType === 'singles'
     ? calculateSinglesRatingChanges(getRating(data.player1Id), getRating(data.player2Id), winner)
     : calculateDoublesRatingChanges(
-        getRating(data.player1Id), 
-        getRating(data.player2Id), 
-        getRating(data.player3Id!), 
-        getRating(data.player4Id!), 
-        winner
-      );
+      getRating(data.player1Id),
+      getRating(data.player2Id),
+      getRating(data.player3Id!),
+      getRating(data.player4Id!),
+      winner
+    );
 
   return { players: playerMap, winner, ratingChanges };
 }
@@ -90,6 +90,20 @@ export async function recordChallengeMatch(data: {
 
   const user = await prisma.user.findUnique({ where: { clerkId } });
   if (!user) throw new Error('User not found');
+
+  // Enforce daily match limit (15 matches per day per user)
+  const DAILY_MATCH_LIMIT = 15;
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const todayMatchCount = await prisma.match.count({
+    where: {
+      creatorId: user.id,
+      createdAt: { gte: startOfDay },
+    },
+  });
+  if (todayMatchCount >= DAILY_MATCH_LIMIT) {
+    return { success: false, error: `You can only record ${DAILY_MATCH_LIMIT} matches per day.` };
+  }
 
   const gameError = validateMatchGames(data.games);
   if (gameError) return { success: false, error: gameError };
@@ -152,7 +166,7 @@ export async function recordEventMatch(data: {
 
   const user = await prisma.user.findUnique({ where: { clerkId } });
   const event = await prisma.event.findUnique({ where: { id: data.eventId } });
-  
+
   if (!user || !event || event.creatorId !== user.id) {
     return { success: false, error: 'Only event creator can record matches' };
   }
@@ -197,49 +211,58 @@ export async function recordEventMatch(data: {
  * Singles: team1 = player1, team2 = player2. Doubles: team1 = player1+player2, team2 = player3+player4.
  * Updates the appropriate rating set (singles or doubles) and win/loss counts.
  */
-async function updateMatchRatings(tx: any, data: any, changes: any, winner: string) {
+async function updateMatchRatings(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  data: { gameType: 'singles' | 'doubles'; player1Id: string; player2Id: string; player3Id?: string; player4Id?: string },
+  changes: ReturnType<typeof calculateSinglesRatingChanges> | ReturnType<typeof calculateDoublesRatingChanges>,
+  winner: string
+) {
   const isSingles = data.gameType === 'singles';
   const playersToUpdate =
     data.gameType === 'singles'
       ? [
-          { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
-          { id: data.player2Id, rating: changes.player2NewRating, team: 'team2' as const },
-        ]
+        { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
+        { id: data.player2Id, rating: changes.player2NewRating, team: 'team2' as const },
+      ]
       : [
-          { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
-          { id: data.player2Id, rating: changes.player2NewRating, team: 'team1' as const },
-          { id: data.player3Id, rating: (changes as any).player3NewRating, team: 'team2' as const },
-          { id: data.player4Id, rating: (changes as any).player4NewRating, team: 'team2' as const },
-        ];
+        { id: data.player1Id, rating: changes.player1NewRating, team: 'team1' as const },
+        { id: data.player2Id, rating: changes.player2NewRating, team: 'team1' as const },
+        { id: data.player3Id!, rating: (changes as ReturnType<typeof calculateDoublesRatingChanges>).player3NewRating, team: 'team2' as const },
+        { id: data.player4Id!, rating: (changes as ReturnType<typeof calculateDoublesRatingChanges>).player4NewRating, team: 'team2' as const },
+      ];
 
   for (const p of playersToUpdate) {
     const won = winner === p.team;
-    const baseData: any = {
-      ratingMu: p.rating.mu,
-      ratingPhi: p.rating.phi,
-      ratingSigma: p.rating.sigma,
-      rating: Math.round(p.rating.mu),
-      winCount: won ? { increment: 1 } : undefined,
-      lossCount: !won ? { increment: 1 } : undefined,
-    };
+    const updateData: Record<string, unknown> = {};
+
     if (isSingles) {
-      baseData.ratingSingles = Math.round(p.rating.mu);
-      baseData.ratingMuSingles = p.rating.mu;
-      baseData.ratingPhiSingles = p.rating.phi;
-      baseData.ratingSigmaSingles = p.rating.sigma;
-      baseData.winCountSingles = won ? { increment: 1 } : undefined;
-      baseData.lossCountSingles = !won ? { increment: 1 } : undefined;
+      updateData.ratingSingles = Math.round(p.rating.mu);
+      updateData.ratingMuSingles = p.rating.mu;
+      updateData.ratingPhiSingles = p.rating.phi;
+      updateData.ratingSigmaSingles = p.rating.sigma;
+      updateData.winCountSingles = won ? { increment: 1 } : undefined;
+      updateData.lossCountSingles = !won ? { increment: 1 } : undefined;
     } else {
-      baseData.ratingDoubles = Math.round(p.rating.mu);
-      baseData.ratingMuDoubles = p.rating.mu;
-      baseData.ratingPhiDoubles = p.rating.phi;
-      baseData.ratingSigmaDoubles = p.rating.sigma;
-      baseData.winCountDoubles = won ? { increment: 1 } : undefined;
-      baseData.lossCountDoubles = !won ? { increment: 1 } : undefined;
+      updateData.ratingDoubles = Math.round(p.rating.mu);
+      updateData.ratingMuDoubles = p.rating.mu;
+      updateData.ratingPhiDoubles = p.rating.phi;
+      updateData.ratingSigmaDoubles = p.rating.sigma;
+      updateData.winCountDoubles = won ? { increment: 1 } : undefined;
+      updateData.lossCountDoubles = !won ? { increment: 1 } : undefined;
     }
+
+    // Update overall win/loss counts
+    updateData.winCount = won ? { increment: 1 } : undefined;
+    updateData.lossCount = !won ? { increment: 1 } : undefined;
+
+    // Remove undefined entries
+    for (const key of Object.keys(updateData)) {
+      if (updateData[key] === undefined) delete updateData[key];
+    }
+
     await tx.user.update({
       where: { id: p.id },
-      data: baseData,
+      data: updateData,
     });
   }
 }
